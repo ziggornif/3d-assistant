@@ -2,7 +2,7 @@ use axum::{
     extract::{Form, State},
     response::{Html, IntoResponse, Redirect},
 };
-use axum_extra::extract::cookie::{Cookie, CookieJar};
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use serde::Deserialize;
 use tera::Context;
 
@@ -157,10 +157,13 @@ pub async fn admin_login(
     Form(form): Form<LoginForm>,
 ) -> (CookieJar, Redirect) {
     if form.token == state.config.admin_token {
-        // Set auth cookie (HTTP-only, secure in production)
+        // Set auth cookie with security flags
+        let is_production = state.config.is_production();
         let cookie = Cookie::build(("admin_token", form.token))
             .path("/")
-            .http_only(true)
+            .http_only(true) // Prevent XSS access
+            .secure(is_production) // HTTPS only in production
+            .same_site(SameSite::Strict) // CSRF protection
             .max_age(time::Duration::hours(24))
             .build();
 
@@ -175,9 +178,11 @@ pub async fn admin_login(
 
 /// Handle admin logout
 pub async fn admin_logout(jar: CookieJar) -> impl IntoResponse {
-    // Remove auth cookie
+    // Remove auth cookie with same security settings
     let cookie = Cookie::build(("admin_token", ""))
         .path("/")
+        .http_only(true)
+        .same_site(SameSite::Strict)
         .max_age(time::Duration::seconds(0))
         .build();
 

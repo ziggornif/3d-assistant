@@ -124,16 +124,20 @@ class FileUploader extends HTMLElement {
         }
 
         .btn-browse {
+          display: inline-block;
           background: var(--color-primary, #2563eb);
           color: white;
           border: none;
           padding: 0.75rem 1.5rem;
           border-radius: 0.5rem;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
           font-size: 1rem;
+          font-weight: 500;
           cursor: pointer;
           margin-top: 1rem;
           min-height: 44px;
           min-width: 44px;
+          text-align: center;
         }
 
         .btn-browse:hover {
@@ -146,14 +150,14 @@ class FileUploader extends HTMLElement {
         }
       </style>
 
-      <div class="drop-zone" role="button" tabindex="0" aria-label="Zone de dépôt de fichiers">
+      <div class="drop-zone">
         <div class="drop-icon" aria-hidden="true">📁</div>
-        <div class="drop-text">Glissez vos fichiers ici</div>
+        <div class="drop-text" id="drop-text">Glissez vos fichiers ici</div>
         <div class="drop-hint">
           ou cliquez pour parcourir<br>
           Formats: ${this.acceptedFormats.map(f => f.toUpperCase()).join(', ')} | Max: ${this.maxSizeMb} MB
         </div>
-        <button class="btn-browse" type="button">
+        <button class="btn-browse" type="button" aria-describedby="drop-text">
           Parcourir les fichiers
         </button>
         <input
@@ -161,7 +165,7 @@ class FileUploader extends HTMLElement {
           id="file-input"
           accept="${this.acceptedFormats.map(f => '.' + f).join(',')}"
           multiple
-          aria-describedby="upload-instructions"
+          aria-label="Sélectionner des fichiers à télécharger"
         >
       </div>
 
@@ -206,21 +210,15 @@ class FileUploader extends HTMLElement {
       this.handleFiles(files);
     });
 
-    // Click to browse
-    browseBtn.addEventListener('click', () => {
+    // Click to browse button
+    browseBtn.addEventListener('click', e => {
+      e.stopPropagation();
       fileInput.click();
     });
 
+    // Click on drop zone area
     dropZone.addEventListener('click', e => {
       if (e.target !== browseBtn) {
-        fileInput.click();
-      }
-    });
-
-    // Keyboard accessibility
-    dropZone.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
         fileInput.click();
       }
     });

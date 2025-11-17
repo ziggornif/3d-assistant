@@ -10,7 +10,9 @@ use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
 use crate::api::handlers::{admin, materials, quote, ssr, upload};
-use crate::api::middleware::{admin_auth, create_rate_limiter};
+use crate::api::middleware::{
+    admin_auth, create_login_rate_limiter, create_rate_limiter, security_headers,
+};
 use crate::config::Config;
 use crate::db::DbPool;
 
@@ -40,7 +42,10 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
         // SSR Pages (Server-Side Rendered)
         .route("/", get(ssr::index_page))
         .route("/admin", get(ssr::admin_page))
-        .route("/admin/login", post(ssr::admin_login))
+        .route(
+            "/admin/login",
+            post(ssr::admin_login).layer(create_login_rate_limiter()),
+        )
         .route("/admin/logout", post(ssr::admin_logout))
         // Session management
         .route("/api/sessions", post(upload::create_session))
@@ -88,6 +93,7 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
         .route("/health", get(health_check))
         .layer(DefaultBodyLimit::max(100 * 1024 * 1024)) // 100MB limit for file uploads
         .layer(create_rate_limiter()) // Global rate limiting: 20 req/s, burst 100
+        .layer(middleware::from_fn_with_state(state.clone(), security_headers)) // Security headers
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state)

@@ -135,3 +135,13 @@ pub fn create_upload_rate_limiter() -> RateLimitLayer {
 
     RateLimitLayer::new(config)
 }
+
+/// Create a very strict rate limiter for admin login (brute force protection)
+pub fn create_login_rate_limiter() -> RateLimitLayer {
+    let config = RateLimitConfig {
+        requests_per_second: 1, // 1 login attempt per second
+        burst_size: 5,          // Allow only 5 attempts then block
+    };
+
+    RateLimitLayer::new(config)
+}

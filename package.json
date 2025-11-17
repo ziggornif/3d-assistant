@@ -20,6 +20,7 @@
     "format:check": "prettier --check 'static/js/**/*.js' 'static/css/**/*.css'"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.56.1",
     "adm-zip": "^0.5.16",
