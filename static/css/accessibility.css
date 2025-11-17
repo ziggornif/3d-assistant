@@ -1,0 +1,217 @@
+/* RGAA Accessibility Compliance Styles */
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--color-primary);
+  color: white;
+  padding: var(--spacing-sm) var(--spacing-md);
+  z-index: 9999;
+  text-decoration: none;
+  font-weight: 600;
+  transition: top 0.3s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Focus indicators - WCAG 2.4.7 */
+*:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* High contrast for text - WCAG 1.4.3 */
+.high-contrast {
+  color: #000000;
+  background-color: #ffffff;
+}
+
+/* Screen reader only content - WCAG 1.3.1 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Visible on focus for keyboard users */
+.sr-only-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Minimum touch target size - WCAG 2.5.5 */
+button,
+[role='button'],
+input[type='file'],
+input[type='submit'],
+input[type='button'] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Text spacing - WCAG 1.4.12 */
+body {
+  letter-spacing: 0.12em;
+  word-spacing: 0.16em;
+}
+
+p {
+  line-height: 1.5;
+}
+
+/* Reflow - WCAG 1.4.10 */
+@media (max-width: 320px) {
+  body {
+    font-size: 100%;
+  }
+}
+
+/* Motion preferences - WCAG 2.3.3 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Color not sole indicator - WCAG 1.4.1 */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.status-indicator::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+.status-success {
+  color: var(--color-success);
+}
+
+.status-success::before {
+  background-color: var(--color-success);
+}
+
+.status-error {
+  color: var(--color-error);
+}
+
+.status-error::before {
+  background-color: var(--color-error);
+}
+
+.status-warning {
+  color: var(--color-warning);
+}
+
+.status-warning::before {
+  background-color: var(--color-warning);
+}
+
+/* Error identification - WCAG 3.3.1 */
+.field-error {
+  border-color: var(--color-error) !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2) !important;
+}
+
+.field-error-message {
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.field-error-message::before {
+  content: '⚠️';
+}
+
+/* Labels and instructions - WCAG 3.3.2 */
+.required-field::after {
+  content: ' *';
+  color: var(--color-error);
+}
+
+.form-hint {
+  color: var(--color-text-light);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
+}
+
+/* Consistent navigation - WCAG 3.2.3 */
+nav {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+nav a {
+  text-decoration: none;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-md);
+}
+
+nav a:hover,
+nav a:focus {
+  background-color: var(--color-background);
+}
+
+nav a[aria-current='page'] {
+  font-weight: 700;
+  border-bottom: 2px solid var(--color-primary);
+}
+
+/* Live regions for dynamic content - WCAG 4.1.3 */
+[aria-live='polite'],
+[aria-live='assertive'] {
+  /* Ensure screen readers announce changes */
+}
+
+/* Ensure contrast for placeholders */
+::placeholder {
+  color: var(--color-secondary);
+  opacity: 1;
+}
+
+/* Ensure text can be resized up to 200% - WCAG 1.4.4 */
+html {
+  font-size: 100%;
+}
+
+@media screen and (min-width: 1200px) {
+  html {
+    font-size: 112.5%;
+  }
+}
+
+/* Ensure no content loss at 400% zoom - WCAG 1.4.10 */
+@media (min-width: 1280px) {
+  main {
+    max-width: 80vw;
+  }
+}

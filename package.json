@@ -1,0 +1,33 @@
+{
+  "name": "3d-print-quote-service",
+  "version": "1.0.0",
+  "description": "3D Printing Quote Service - End-to-end testing",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.22.0",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:headed": "playwright test --headed",
+    "test:api": "playwright test e2e/api/",
+    "test:ui": "playwright test e2e/ui/",
+    "playwright:install": "pnpm exec playwright install",
+    "codegen": "playwright codegen http://127.0.0.1:3000",
+    "lint": "eslint static/js/",
+    "lint:fix": "eslint static/js/ --fix",
+    "format": "prettier --write 'static/js/**/*.js' 'static/css/**/*.css'",
+    "format:check": "prettier --check 'static/js/**/*.js' 'static/css/**/*.css'"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@eslint/js": "^9.39.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "adm-zip": "^0.5.16"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

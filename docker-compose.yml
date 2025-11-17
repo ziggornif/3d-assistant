@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+      - DATABASE_URL=sqlite:///app/data/quotes.db?mode=rwc
+      - UPLOAD_DIR=/app/uploads
+      - STATIC_DIR=/app/static
+      - TEMPLATE_DIR=/app/templates
+      - MAX_FILE_SIZE_MB=50
+      - SESSION_EXPIRY_HOURS=24
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-admin-secret-token-2025}
+      - RUST_LOG=info
+    volumes:
+      - app_data:/app/data
+      - app_uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/materials"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  app_data:
+    driver: local
+  app_uploads:
+    driver: local

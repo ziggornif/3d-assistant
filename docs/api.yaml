@@ -1,0 +1,476 @@
+openapi: 3.0.3
+info:
+  title: 3D Print Quote Service API
+  description: API pour le service de devis d'impression 3D
+  version: 1.0.0
+  contact:
+    name: 3D Print Quote Service Team
+
+servers:
+  - url: http://127.0.0.1:3000
+    description: Serveur de développement
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags: [Health]
+      responses:
+        '200':
+          description: Service opérationnel
+          content:
+            text/plain:
+              example: OK
+
+  /api/sessions:
+    post:
+      summary: Créer une nouvelle session de devis
+      tags: [Sessions]
+      responses:
+        '200':
+          description: Session créée avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+
+  /api/sessions/{sessionId}/models:
+    post:
+      summary: Uploader un fichier 3D
+      tags: [Models]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Fichier STL ou 3MF (max 50MB)
+      responses:
+        '200':
+          description: Modèle uploadé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+        '400':
+          description: Fichier invalide
+        '404':
+          description: Session non trouvée
+        '413':
+          description: Fichier trop volumineux
+
+  /api/sessions/{sessionId}/models/{modelId}:
+    patch:
+      summary: Configurer un modèle (matériau, quantité)
+      tags: [Models]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/ModelId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                material_id:
+                  type: string
+                  example: pla_white
+                quantity:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: Configuration mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigureResponse'
+        '404':
+          description: Session ou modèle non trouvé
+
+    delete:
+      summary: Supprimer un modèle de la session
+      tags: [Models]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - $ref: '#/components/parameters/ModelId'
+      responses:
+        '200':
+          description: Modèle supprimé
+        '404':
+          description: Session ou modèle non trouvé
+
+  /api/materials:
+    get:
+      summary: Lister les matériaux disponibles
+      tags: [Materials]
+      responses:
+        '200':
+          description: Liste des matériaux
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Material'
+
+  /api/sessions/{sessionId}/quote:
+    get:
+      summary: Obtenir le devis actuel (non sauvegardé)
+      tags: [Quotes]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Devis calculé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteBreakdown'
+        '404':
+          description: Session non trouvée
+
+    post:
+      summary: Générer et sauvegarder le devis final
+      tags: [Quotes]
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Devis généré et sauvegardé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteResponse'
+        '404':
+          description: Session non trouvée
+
+  /api/admin/materials:
+    get:
+      summary: Lister tous les matériaux (admin)
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Liste complète des matériaux
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminMaterial'
+        '401':
+          description: Non autorisé
+
+    post:
+      summary: Créer un nouveau matériau
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMaterialRequest'
+      responses:
+        '200':
+          description: Matériau créé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMaterial'
+        '401':
+          description: Non autorisé
+
+  /api/admin/materials/{materialId}:
+    patch:
+      summary: Mettre à jour un matériau
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/MaterialId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMaterialRequest'
+      responses:
+        '200':
+          description: Matériau mis à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMaterial'
+        '401':
+          description: Non autorisé
+        '404':
+          description: Matériau non trouvé
+
+  /api/admin/pricing-history:
+    get:
+      summary: Historique des changements de prix
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Historique des prix
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PricingHistoryEntry'
+        '401':
+          description: Non autorisé
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Token admin (ADMIN_TOKEN dans .env)
+
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^[0-9A-Z]{26}$'
+      description: ID de session (format ULID)
+
+    ModelId:
+      name: modelId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: ID du modèle
+
+    MaterialId:
+      name: materialId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: ID du matériau
+
+  schemas:
+    SessionResponse:
+      type: object
+      required: [session_id, expires_at]
+      properties:
+        session_id:
+          type: string
+          example: 01JCV8E3X1MFXZ6BNQWRGY9P0D
+        expires_at:
+          type: string
+          format: date-time
+          example: '2025-11-17T12:00:00Z'
+
+    UploadResponse:
+      type: object
+      required: [model_id, filename, volume_cm3, dimensions_mm, triangle_count, preview_url]
+      properties:
+        model_id:
+          type: string
+          example: 01JCV8E3X1MFXZ6BNQWRGY9P0E
+        filename:
+          type: string
+          example: model.stl
+        volume_cm3:
+          type: number
+          format: float
+          example: 10.5
+        dimensions_mm:
+          type: object
+          properties:
+            x:
+              type: number
+              example: 50.0
+            y:
+              type: number
+              example: 50.0
+            z:
+              type: number
+              example: 20.0
+        triangle_count:
+          type: integer
+          example: 1234
+        preview_url:
+          type: string
+          example: /uploads/01JCV.../model.stl
+
+    ConfigureResponse:
+      type: object
+      properties:
+        model_id:
+          type: string
+        material_id:
+          type: string
+        material_name:
+          type: string
+        estimated_price:
+          type: number
+
+    Material:
+      type: object
+      required: [id, name, price_per_cm3]
+      properties:
+        id:
+          type: string
+          example: pla_white
+        name:
+          type: string
+          example: PLA Blanc
+        description:
+          type: string
+          example: PLA biodégradable
+        price_per_cm3:
+          type: number
+          example: 0.05
+        color:
+          type: string
+          example: '#FFFFFF'
+
+    AdminMaterial:
+      allOf:
+        - $ref: '#/components/schemas/Material'
+        - type: object
+          properties:
+            service_type_id:
+              type: string
+            properties:
+              type: object
+            active:
+              type: boolean
+            created_at:
+              type: string
+            updated_at:
+              type: string
+
+    CreateMaterialRequest:
+      type: object
+      required: [name, service_type_id, price_per_cm3]
+      properties:
+        name:
+          type: string
+        service_type_id:
+          type: string
+          example: 3d_printing
+        description:
+          type: string
+        price_per_cm3:
+          type: number
+        color:
+          type: string
+        properties:
+          type: object
+
+    UpdateMaterialRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        price_per_cm3:
+          type: number
+        color:
+          type: string
+        properties:
+          type: object
+        active:
+          type: boolean
+
+    QuoteBreakdown:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuoteItem'
+        subtotal:
+          type: number
+          example: 0.53
+        fees:
+          type: number
+          example: 2.0
+        total:
+          type: number
+          example: 10.0
+        minimum_applied:
+          type: boolean
+        calculated_total:
+          type: number
+
+    QuoteItem:
+      type: object
+      properties:
+        model_id:
+          type: string
+        model_name:
+          type: string
+        material_name:
+          type: string
+        volume_cm3:
+          type: number
+        quantity:
+          type: integer
+        price:
+          type: number
+
+    QuoteResponse:
+      allOf:
+        - $ref: '#/components/schemas/QuoteBreakdown'
+        - type: object
+          properties:
+            quote_id:
+              type: string
+
+    PricingHistoryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        material_id:
+          type: string
+        material_name:
+          type: string
+        old_price:
+          type: number
+          nullable: true
+        new_price:
+          type: number
+        changed_by:
+          type: string
+        changed_at:
+          type: string
+          format: date-time
+
+tags:
+  - name: Health
+    description: Status du service
+  - name: Sessions
+    description: Gestion des sessions de devis
+  - name: Models
+    description: Upload et configuration des modèles 3D
+  - name: Materials
+    description: Matériaux d'impression disponibles
+  - name: Quotes
+    description: Génération de devis
+  - name: Admin
+    description: Administration (authentifié)

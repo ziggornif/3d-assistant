@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block description %}Téléchargez vos modèles pour impression 3D (STL, 3MF) et obtenez un devis instantané{% endblock %}
+
+{% block title %}Devis Impression 3D{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/css/accessibility.css">
+    <link rel="stylesheet" href="/static/css/components/file-uploader.css">
+    <link rel="stylesheet" href="/static/css/components/model-viewer.css">
+    <link rel="stylesheet" href="/static/css/components/material-selector.css">
+    <link rel="stylesheet" href="/static/css/components/quote-summary.css">
+{% endblock %}
+
+{% block head_scripts %}
+    <!-- Three.js for 3D rendering (ES Modules) -->
+    <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.181.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.181.0/examples/jsm/"
+      }
+    }
+    </script>
+
+    <!-- Server-side rendered data (SSR) -->
+    <script>
+        window.__SSR_DATA__ = {
+            sessionId: "{{ session_id }}",
+            materials: {{ materials_json | safe }},
+            apiBase: "{{ api_base }}"
+        };
+    </script>
+{% endblock %}
+
+{% block body %}
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+    <header role="banner">
+        <div class="header-content">
+            <div>
+                <h1>Service de Devis Impression 3D</h1>
+                <p>Téléchargez vos modèles 3D et obtenez un devis instantané</p>
+            </div>
+            <nav class="header-nav">
+                <a href="/admin" class="admin-link">Administration</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main-content" role="main">
+        <section id="upload-section" aria-labelledby="upload-heading">
+            <h2 id="upload-heading">1. Télécharger vos fichiers</h2>
+            <file-uploader
+                id="file-uploader"
+                max-size-mb="50"
+                accepted-formats="stl,3mf"
+                aria-describedby="upload-instructions">
+            </file-uploader>
+            <p id="upload-instructions" class="instructions">
+                Formats acceptés : STL, 3MF. Taille maximale : 50 MB par fichier.
+            </p>
+        </section>
+
+        <section id="models-section" aria-labelledby="models-heading" hidden>
+            <h2 id="models-heading">2. Vos modèles</h2>
+            <div id="models-list" role="list" aria-live="polite">
+                <!-- Model cards will be inserted here -->
+            </div>
+        </section>
+
+        <section id="quote-section" aria-labelledby="quote-heading" hidden>
+            <h2 id="quote-heading">3. Votre devis</h2>
+            <quote-summary id="quote-summary" aria-live="polite"></quote-summary>
+        </section>
+    </main>
+
+    <footer role="contentinfo">
+        <p>&copy; 2025 Service de Devis Impression 3D</p>
+    </footer>
+{% endblock %}
+
+{% block scripts %}
+    <script type="module" src="/static/js/main.js"></script>
+{% endblock %}
