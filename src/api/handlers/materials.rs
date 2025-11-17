@@ -35,7 +35,7 @@ pub async fn list_materials(
                    m.color, m.properties, m.active, m.created_at, m.updated_at
             FROM materials m
             JOIN service_types st ON m.service_type_id = st.id
-            WHERE st.name = ? AND m.active = 1
+            WHERE st.name = $1 AND m.active = true
             ORDER BY m.name
             "#,
             )
@@ -48,7 +48,7 @@ pub async fn list_materials(
             SELECT id, service_type_id, name, description, price_per_cm3,
                    color, properties, active, created_at, updated_at
             FROM materials
-            WHERE active = 1
+            WHERE active = true
             ORDER BY name
             "#,
             )

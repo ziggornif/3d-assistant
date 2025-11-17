@@ -1,27 +1,24 @@
 use anyhow::Result;
-use sqlx::{Pool, Sqlite, sqlite::SqlitePoolOptions};
-use std::path::Path;
+use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 
 pub mod schema;
 
-/// Database connection pool wrapper
-pub type DbPool = Pool<Sqlite>;
+/// Database connection pool wrapper (PostgreSQL)
+pub type DbPool = Pool<Postgres>;
 
 /// Initialize database connection pool
 pub async fn init_pool(database_url: &str) -> Result<DbPool> {
-    // Ensure the database directory exists
-    if let Some(path) = database_url.strip_prefix("sqlite://")
-        && let Some(parent) = Path::new(path).parent()
-    {
-        std::fs::create_dir_all(parent)?;
-    }
-
-    let pool = SqlitePoolOptions::new()
+    let pool = PgPoolOptions::new()
         .max_connections(10)
         .min_connections(1)
         .acquire_timeout(std::time::Duration::from_secs(30))
         .connect(database_url)
         .await?;
+
+    tracing::info!(
+        "Connected to database: {}",
+        database_url.split('?').next().unwrap_or(database_url)
+    );
 
     Ok(pool)
 }
@@ -31,7 +28,7 @@ pub async fn run_migrations(pool: &DbPool) -> Result<()> {
     let migrations_dir = std::path::Path::new("src/db/migrations");
 
     if !migrations_dir.exists() {
-        anyhow::bail!("Migrations directory not found");
+        anyhow::bail!("Migrations directory not found: {:?}", migrations_dir);
     }
 
     let mut entries: Vec<_> = std::fs::read_dir(migrations_dir)?
@@ -49,7 +46,10 @@ pub async fn run_migrations(pool: &DbPool) -> Result<()> {
     for entry in entries {
         let sql = std::fs::read_to_string(entry.path())?;
         tracing::info!("Running migration: {:?}", entry.path().file_name());
-        sqlx::query(&sql).execute(pool).await?;
+        // Execute each statement separately (required for PostgreSQL)
+        for statement in sql.split(';').filter(|s| !s.trim().is_empty()) {
+            sqlx::query(statement).execute(pool).await?;
+        }
     }
 
     Ok(())

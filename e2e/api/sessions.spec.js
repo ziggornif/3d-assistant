@@ -25,9 +25,9 @@ test.describe('Session Management API', () => {
     const response = await request.post(`${API_BASE}/api/sessions`);
     const data = await response.json();
 
+    const createdAt = new Date(data.created_at);
     const expiresAt = new Date(data.expires_at);
-    const now = new Date();
-    const hoursDiff = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+    const hoursDiff = (expiresAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
 
     // Should expire in ~24 hours
     expect(hoursDiff).toBeGreaterThan(23);

@@ -3,6 +3,7 @@ use axum::{
     extract::{Multipart, Path, State},
     http::StatusCode,
 };
+use chrono::NaiveDateTime;
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -14,7 +15,8 @@ use crate::services::{SessionService, file_processor};
 #[derive(Serialize)]
 pub struct CreateSessionResponse {
     pub session_id: String,
-    pub expires_at: String,
+    pub created_at: NaiveDateTime,
+    pub expires_at: NaiveDateTime,
 }
 
 /// Create a new quote session
@@ -28,6 +30,7 @@ pub async fn create_session(
 
     Ok(Json(CreateSessionResponse {
         session_id: session.id,
+        created_at: session.created_at,
         expires_at: session.expires_at,
     }))
 }
@@ -38,7 +41,7 @@ pub struct UploadModelResponse {
     pub filename: String,
     pub volume_cm3: f64,
     pub dimensions_mm: DimensionsResponse,
-    pub triangle_count: i32,
+    pub triangle_count: i64,
     pub file_size_bytes: i64,
     pub preview_url: String,
 }
@@ -195,7 +198,7 @@ pub async fn upload_model(
         r#"
         INSERT INTO uploaded_models
         (id, session_id, filename, file_format, file_size_bytes, volume_cm3, dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         "#,
     )
     .bind(&model.id)
@@ -208,7 +211,7 @@ pub async fn upload_model(
     .bind(model.triangle_count)
     .bind(&model.material_id)
     .bind(&model.file_path)
-    .bind(&model.created_at)
+    .bind(model.created_at)
     .bind(&model.support_analysis)
     .execute(&state.pool)
     .await?;
@@ -258,7 +261,7 @@ pub async fn delete_model(
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
                dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
         FROM uploaded_models
-        WHERE id = ? AND session_id = ?
+        WHERE id = $1 AND session_id = $2
         "#,
     )
     .bind(&model_id)
@@ -274,7 +277,7 @@ pub async fn delete_model(
     }
 
     // Delete from database
-    sqlx::query("DELETE FROM uploaded_models WHERE id = ?")
+    sqlx::query("DELETE FROM uploaded_models WHERE id = $1")
         .bind(&model_id)
         .execute(&state.pool)
         .await?;

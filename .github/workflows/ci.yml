@@ -91,6 +91,20 @@ jobs:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [rust, lint]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_quotes
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@v4
 
@@ -141,14 +155,11 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Create data directory
-        run: mkdir -p data
-
       - name: Run E2E tests
         run: pnpm test:e2e
         env:
           CI: true
-          DATABASE_URL: sqlite://./data/quotes.db?mode=rwc
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_quotes
           ADMIN_TOKEN: admin-secret-token-2025
 
       - name: Upload test results

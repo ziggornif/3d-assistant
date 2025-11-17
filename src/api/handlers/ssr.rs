@@ -16,15 +16,22 @@ use crate::services::render_template;
 pub async fn index_page(State(state): State<AppState>) -> Result<Html<String>, AppError> {
     // Create a new session
     let session = QuoteSession::new();
+    tracing::info!(
+        "Query : {} {} {} {}",
+        &session.id,
+        &session.created_at,
+        &session.expires_at,
+        &session.status
+    );
     sqlx::query(
         r#"
         INSERT INTO quote_sessions (id, created_at, expires_at, status)
-        VALUES (?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4)
         "#,
     )
     .bind(&session.id)
-    .bind(&session.created_at)
-    .bind(&session.expires_at)
+    .bind(session.created_at)
+    .bind(session.expires_at)
     .bind(&session.status)
     .execute(&state.pool)
     .await?;
@@ -35,7 +42,7 @@ pub async fn index_page(State(state): State<AppState>) -> Result<Html<String>, A
         SELECT id, service_type_id, name, description, price_per_cm3,
                color, properties, active, created_at, updated_at
         FROM materials
-        WHERE active = 1
+        WHERE active = true
         ORDER BY name
         "#,
     )

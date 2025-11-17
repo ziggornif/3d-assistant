@@ -1,3 +1,4 @@
+use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
@@ -9,7 +10,7 @@ pub struct ServiceType {
     pub name: String,
     pub description: Option<String>,
     pub active: bool,
-    pub created_at: String,
+    pub created_at: NaiveDateTime,
 }
 
 impl ServiceType {
@@ -21,7 +22,7 @@ impl ServiceType {
             name,
             description,
             active: true,
-            created_at: chrono::Utc::now().to_rfc3339(),
+            created_at: Utc::now().naive_utc(),
         }
     }
 }

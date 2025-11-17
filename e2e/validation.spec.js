@@ -196,11 +196,12 @@ endsolid test`;
 
       expect(session).toHaveProperty('session_id');
       expect(session).toHaveProperty('expires_at');
+      expect(session).toHaveProperty('created_at');
 
-      // Expiration should be in the future (at least 23 hours from now)
+      // Expiration should be ~24 hours from creation
+      const createdAt = new Date(session.created_at);
       const expiresAt = new Date(session.expires_at);
-      const now = new Date();
-      const hoursDiff = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
+      const hoursDiff = (expiresAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
 
       expect(hoursDiff).toBeGreaterThan(23);
       expect(hoursDiff).toBeLessThanOrEqual(25); // Around 24 hours

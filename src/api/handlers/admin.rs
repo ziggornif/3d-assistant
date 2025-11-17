@@ -2,7 +2,7 @@ use axum::{
     Json,
     extract::{Path, State},
 };
-use chrono::Utc;
+use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
@@ -31,8 +31,8 @@ pub struct AdminMaterialResponse {
     pub color: Option<String>,
     pub properties: Option<serde_json::Value>,
     pub active: bool,
-    pub created_at: String,
-    pub updated_at: Option<String>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 impl From<Material> for AdminMaterialResponse {
@@ -47,11 +47,7 @@ impl From<Material> for AdminMaterialResponse {
             properties: m.properties.and_then(|s| serde_json::from_str(&s).ok()),
             active: m.active,
             created_at: m.created_at,
-            updated_at: if m.updated_at.is_empty() {
-                None
-            } else {
-                Some(m.updated_at)
-            },
+            updated_at: m.updated_at,
         }
     }
 }
@@ -92,27 +88,27 @@ pub async fn create_material(
     Json(body): Json<CreateMaterialRequest>,
 ) -> AppResult<Json<AdminMaterialResponse>> {
     let id = Ulid::new().to_string();
-    let now = Utc::now().to_rfc3339();
+    let now = Utc::now().naive_utc();
     let properties_json = body
         .properties
         .as_ref()
         .map(|p| serde_json::to_string(p).unwrap_or_default());
 
     sqlx::query(
-        r#"INSERT INTO materials (id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)"#,
+        r#"INSERT INTO materials (id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9)"#,
     )
     .bind(&id).bind(&body.service_type_id).bind(&body.name).bind(&body.description)
-    .bind(body.price_per_cm3).bind(&body.color).bind(&properties_json).bind(&now)
+    .bind(body.price_per_cm3).bind(&body.color).bind(&properties_json).bind(now).bind(now)
     .execute(&state.pool).await?;
 
     let history_id = Ulid::new().to_string();
-    sqlx::query(r#"INSERT INTO pricing_history (id, material_id, old_price, new_price, changed_by, changed_at) VALUES (?, ?, NULL, ?, ?, ?)"#)
-        .bind(&history_id).bind(&id).bind(body.price_per_cm3).bind("admin").bind(&now)
+    sqlx::query(r#"INSERT INTO pricing_history (id, material_id, old_price, new_price, changed_by, changed_at) VALUES ($1, $2, NULL, $3, $4, $5)"#)
+        .bind(&history_id).bind(&id).bind(body.price_per_cm3).bind("admin").bind(now)
         .execute(&state.pool).await?;
 
     let material: Material = sqlx::query_as(
-        r#"SELECT id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at FROM materials WHERE id = ?"#,
+        r#"SELECT id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at FROM materials WHERE id = $1"#,
     ).bind(&id).fetch_one(&state.pool).await?;
 
     tracing::info!("Admin created material: {} ({})", body.name, id);
@@ -136,18 +132,18 @@ pub async fn update_material(
     Json(body): Json<UpdateMaterialRequest>,
 ) -> AppResult<Json<AdminMaterialResponse>> {
     let current: Option<Material> = sqlx::query_as(
-        r#"SELECT id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at FROM materials WHERE id = ?"#,
+        r#"SELECT id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at FROM materials WHERE id = $1"#,
     ).bind(&id).fetch_optional(&state.pool).await?;
 
     let current = current.ok_or_else(|| AppError::MaterialNotFound(id.clone()))?;
-    let now = Utc::now().to_rfc3339();
+    let now = Utc::now().naive_utc();
 
     if let Some(new_price) = body.price_per_cm3
         && (new_price - current.price_per_cm3).abs() > f64::EPSILON
     {
         let history_id = Ulid::new().to_string();
-        sqlx::query(r#"INSERT INTO pricing_history (id, material_id, old_price, new_price, changed_by, changed_at) VALUES (?, ?, ?, ?, ?, ?)"#)
-            .bind(&history_id).bind(&id).bind(current.price_per_cm3).bind(new_price).bind("admin").bind(&now)
+        sqlx::query(r#"INSERT INTO pricing_history (id, material_id, old_price, new_price, changed_by, changed_at) VALUES ($1, $2, $3, $4, $5, $6)"#)
+            .bind(&history_id).bind(&id).bind(current.price_per_cm3).bind(new_price).bind("admin").bind(now)
             .execute(&state.pool).await?;
         tracing::info!(
             "Price changed for material {}: {}€ -> {}€",
@@ -171,12 +167,12 @@ pub async fn update_material(
         .as_ref()
         .map(|p| serde_json::to_string(p).unwrap_or_default());
 
-    sqlx::query(r#"UPDATE materials SET name = ?, description = ?, price_per_cm3 = ?, color = ?, properties = ?, active = ?, updated_at = ? WHERE id = ?"#)
-        .bind(&name).bind(&description).bind(price_per_cm3).bind(&color).bind(&properties_json).bind(active).bind(&now).bind(&id)
+    sqlx::query(r#"UPDATE materials SET name = $1, description = $2, price_per_cm3 = $3, color = $4, properties = $5, active = $6, updated_at = $7 WHERE id = $8"#)
+        .bind(&name).bind(&description).bind(price_per_cm3).bind(&color).bind(&properties_json).bind(active).bind(now).bind(&id)
         .execute(&state.pool).await?;
 
     let updated: Material = sqlx::query_as(
-        r#"SELECT id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at FROM materials WHERE id = ?"#,
+        r#"SELECT id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at FROM materials WHERE id = $1"#,
     ).bind(&id).fetch_one(&state.pool).await?;
 
     tracing::info!("Admin updated material: {}", id);

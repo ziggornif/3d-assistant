@@ -23,7 +23,7 @@ impl Config {
         dotenvy::dotenv().ok();
 
         let database_url = std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "sqlite://./data/quotes.db".to_string());
+            .unwrap_or_else(|_| "postgres://localhost/quotes".to_string());
 
         let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 

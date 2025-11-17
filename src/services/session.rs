@@ -2,6 +2,7 @@ use crate::api::middleware::AppError;
 use crate::db::DbPool;
 use crate::models::QuoteSession;
 use anyhow::Result;
+use chrono::Utc;
 use std::path::{Path, PathBuf};
 
 /// Result of session cleanup operation
@@ -33,12 +34,12 @@ impl SessionService {
         sqlx::query(
             r#"
             INSERT INTO quote_sessions (id, created_at, expires_at, status)
-            VALUES (?, ?, ?, ?)
+            VALUES ($1, $2, $3, $4)
             "#,
         )
         .bind(&session.id)
-        .bind(&session.created_at)
-        .bind(&session.expires_at)
+        .bind(session.created_at)
+        .bind(session.expires_at)
         .bind(&session.status)
         .execute(&self.pool)
         .await?;
@@ -52,7 +53,7 @@ impl SessionService {
             r#"
             SELECT id, created_at, expires_at, status
             FROM quote_sessions
-            WHERE id = ?
+            WHERE id = $1
             "#,
         )
         .bind(session_id)
@@ -73,8 +74,8 @@ impl SessionService {
         sqlx::query(
             r#"
             UPDATE quote_sessions
-            SET status = ?
-            WHERE id = ?
+            SET status = $1
+            WHERE id = $2
             "#,
         )
         .bind(status)
@@ -94,12 +95,14 @@ impl SessionService {
         };
 
         // First, get the list of expired session IDs
+        let now = Utc::now().naive_utc();
         let expired_sessions: Vec<(String,)> = sqlx::query_as(
             r#"
             SELECT id FROM quote_sessions
-            WHERE expires_at < datetime('now')
+            WHERE expires_at < $1
             "#,
         )
+        .bind(now)
         .fetch_all(&self.pool)
         .await?;
 
@@ -130,10 +133,11 @@ impl SessionService {
             DELETE FROM uploaded_models
             WHERE session_id IN (
                 SELECT id FROM quote_sessions
-                WHERE expires_at < datetime('now')
+                WHERE expires_at < $1
             )
             "#,
         )
+        .bind(now)
         .execute(&self.pool)
         .await?;
 
@@ -143,10 +147,11 @@ impl SessionService {
             DELETE FROM quotes
             WHERE session_id IN (
                 SELECT id FROM quote_sessions
-                WHERE expires_at < datetime('now')
+                WHERE expires_at < $1
             )
             "#,
         )
+        .bind(now)
         .execute(&self.pool)
         .await?;
 
@@ -154,9 +159,10 @@ impl SessionService {
         let delete_result = sqlx::query(
             r#"
             DELETE FROM quote_sessions
-            WHERE expires_at < datetime('now')
+            WHERE expires_at < $1
             "#,
         )
+        .bind(now)
         .execute(&self.pool)
         .await?;
 
@@ -175,12 +181,14 @@ impl SessionService {
     /// Get count of expired sessions (without deleting)
     #[allow(dead_code)]
     pub async fn count_expired(&self) -> Result<i64> {
+        let now = Utc::now().naive_utc();
         let count: (i64,) = sqlx::query_as(
             r#"
             SELECT COUNT(*) FROM quote_sessions
-            WHERE expires_at < datetime('now')
+            WHERE expires_at < $1
             "#,
         )
+        .bind(now)
         .fetch_one(&self.pool)
         .await?;
 

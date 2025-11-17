@@ -28,7 +28,6 @@ Service de devis instantané pour impression 3D. Téléchargez vos fichiers STL/
 │   └── css/          # Styles (main, accessibility, components)
 ├── templates/        # Templates SSR (Tera)
 ├── e2e/              # Tests E2E Playwright
-├── data/             # Base de données SQLite
 └── uploads/          # Fichiers uploadés
 ```
 
@@ -82,8 +81,8 @@ pnpm lint
 ### Variables d'environnement (.env)
 
 ```env
-# Base de données
-DATABASE_URL=sqlite://./data/quotes.db?mode=rwc
+# Base de données PostgreSQL
+DATABASE_URL=postgres://user:password@localhost:5432/quotes
 
 # Serveur
 HOST=127.0.0.1
@@ -99,6 +98,14 @@ SESSION_EXPIRY_HOURS=24
 # Admin
 ADMIN_TOKEN=admin-secret-token-2025
 ```
+
+### Docker Compose
+
+```bash
+docker compose up -d
+```
+
+Cela démarre PostgreSQL + l'application avec les variables d'environnement configurées.
 
 ## API Endpoints
 

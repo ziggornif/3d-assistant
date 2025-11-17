@@ -7,13 +7,13 @@ CREATE TABLE IF NOT EXISTS uploaded_models (
     session_id TEXT NOT NULL REFERENCES quote_sessions(id) ON DELETE CASCADE,
     filename TEXT NOT NULL,
     file_format TEXT NOT NULL CHECK (file_format IN ('stl', '3mf')),
-    file_size_bytes INTEGER NOT NULL,
-    volume_cm3 REAL,
+    file_size_bytes BIGINT NOT NULL,
+    volume_cm3 DOUBLE PRECISION,
     dimensions_mm TEXT, -- JSON: {x: float, y: float, z: float}
-    triangle_count INTEGER,
+    triangle_count BIGINT,
     material_id TEXT REFERENCES materials(id),
     file_path TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TIMESTAMP NOT NULL,
     support_analysis TEXT -- JSON: {needs_support: bool, overhang_percentage: float, estimated_support_material_percentage: float}
 );
 

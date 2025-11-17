@@ -39,7 +39,7 @@ pub async fn configure_model(
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
                dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
         FROM uploaded_models
-        WHERE id = ? AND session_id = ?
+        WHERE id = $1 AND session_id = $2
         "#,
     )
     .bind(&model_id)
@@ -55,7 +55,7 @@ pub async fn configure_model(
         SELECT id, service_type_id, name, description, price_per_cm3,
                color, properties, active, created_at, updated_at
         FROM materials
-        WHERE id = ? AND active = 1
+        WHERE id = $1 AND active = true
         "#,
     )
     .bind(&body.material_id)
@@ -65,7 +65,7 @@ pub async fn configure_model(
     let material = material.ok_or_else(|| AppError::MaterialNotFound(body.material_id.clone()))?;
 
     // Update model with material_id
-    sqlx::query("UPDATE uploaded_models SET material_id = ? WHERE id = ?")
+    sqlx::query("UPDATE uploaded_models SET material_id = $1 WHERE id = $2")
         .bind(&body.material_id)
         .bind(&model_id)
         .execute(&state.pool)
@@ -126,7 +126,7 @@ pub async fn generate_quote(
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
                dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
         FROM uploaded_models
-        WHERE session_id = ?
+        WHERE session_id = $1
         "#,
     )
     .bind(&session_id)
@@ -149,7 +149,7 @@ pub async fn generate_quote(
             SELECT id, service_type_id, name, description, price_per_cm3,
                    color, properties, active, created_at, updated_at
             FROM materials
-            WHERE id = ?
+            WHERE id = $1
             "#,
         )
         .bind(material_id)
@@ -186,14 +186,14 @@ pub async fn generate_quote(
 
     // Create quote record
     let quote_id = Ulid::new().to_string();
-    let now = chrono::Utc::now().to_rfc3339();
+    let now = chrono::Utc::now().naive_utc();
     let breakdown_json = serde_json::to_string(&breakdown)
         .map_err(|e| AppError::Internal(format!("JSON serialization error: {}", e)))?;
 
     sqlx::query(
         r#"
         INSERT INTO quotes (id, session_id, total_price, breakdown, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5, $6)
         "#,
     )
     .bind(&quote_id)
@@ -201,7 +201,7 @@ pub async fn generate_quote(
     .bind(breakdown.total)
     .bind(&breakdown_json)
     .bind("generated")
-    .bind(&now)
+    .bind(now)
     .execute(&state.pool)
     .await?;
 
@@ -256,7 +256,7 @@ pub async fn get_current_quote(
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
                dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
         FROM uploaded_models
-        WHERE session_id = ?
+        WHERE session_id = $1
         "#,
     )
     .bind(&session_id)
@@ -272,7 +272,7 @@ pub async fn get_current_quote(
                 SELECT id, service_type_id, name, description, price_per_cm3,
                        color, properties, active, created_at, updated_at
                 FROM materials
-                WHERE id = ?
+                WHERE id = $1
                 "#,
             )
             .bind(material_id)

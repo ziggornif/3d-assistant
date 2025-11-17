@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use ulid::Ulid;
@@ -7,8 +7,8 @@ use ulid::Ulid;
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct QuoteSession {
     pub id: String,
-    pub created_at: String,
-    pub expires_at: String,
+    pub created_at: NaiveDateTime,
+    pub expires_at: NaiveDateTime,
     pub status: String,
 }
 
@@ -20,19 +20,15 @@ impl QuoteSession {
 
         Self {
             id: Ulid::new().to_string(),
-            created_at: now.to_rfc3339(),
-            expires_at: expires.to_rfc3339(),
+            created_at: now.naive_utc(),
+            expires_at: expires.naive_utc(),
             status: "active".to_string(),
         }
     }
 
     /// Check if session is expired
     pub fn is_expired(&self) -> bool {
-        if let Ok(expires) = DateTime::parse_from_rfc3339(&self.expires_at) {
-            expires < Utc::now()
-        } else {
-            true
-        }
+        self.expires_at < Utc::now().naive_utc()
     }
 }
 
@@ -52,10 +48,10 @@ pub struct UploadedModel {
     pub file_size_bytes: i64,
     pub volume_cm3: Option<f64>,
     pub dimensions_mm: Option<String>, // JSON: {x, y, z}
-    pub triangle_count: Option<i32>,
+    pub triangle_count: Option<i64>,
     pub material_id: Option<String>,
     pub file_path: String,
-    pub created_at: String,
+    pub created_at: NaiveDateTime,
     pub support_analysis: Option<String>, // JSON: {needs_support, overhang_percentage, estimated_support_material_percentage}
 }
 
@@ -87,7 +83,7 @@ impl UploadedModel {
             triangle_count: None,
             material_id: None,
             file_path,
-            created_at: Utc::now().to_rfc3339(),
+            created_at: Utc::now().naive_utc(),
             support_analysis: None,
         }
     }
@@ -128,7 +124,7 @@ pub struct Quote {
     pub session_id: String,
     pub total_price: f64,
     pub breakdown: String, // JSON
-    pub created_at: String,
+    pub created_at: NaiveDateTime,
 }
 
 /// Quote breakdown item
@@ -162,7 +158,7 @@ impl Quote {
             session_id,
             total_price: breakdown.total,
             breakdown: serde_json::to_string(&breakdown).unwrap_or_default(),
-            created_at: Utc::now().to_rfc3339(),
+            created_at: Utc::now().naive_utc(),
         }
     }
 

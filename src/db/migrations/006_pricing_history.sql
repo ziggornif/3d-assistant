@@ -5,10 +5,10 @@
 CREATE TABLE IF NOT EXISTS pricing_history (
     id TEXT PRIMARY KEY NOT NULL,
     material_id TEXT NOT NULL REFERENCES materials(id),
-    old_price REAL,
-    new_price REAL NOT NULL,
+    old_price DOUBLE PRECISION,
+    new_price DOUBLE PRECISION NOT NULL,
     changed_by TEXT,
-    changed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    changed_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_pricing_history_material ON pricing_history(material_id);

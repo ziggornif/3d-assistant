@@ -24,7 +24,7 @@
 - No sensitive data in logs (tokens masked)
 
 **Considerations:**
-- Database is SQLite (not encrypted at rest)
+- Database encryption at rest depends on PostgreSQL configuration
 - Admin token is static (consider rotating tokens)
 - No file encryption for uploaded models
 

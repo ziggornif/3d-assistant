@@ -10,7 +10,7 @@ use std::path::Path;
 pub struct ProcessedModel {
     pub volume_cm3: f64,
     pub dimensions_mm: Dimensions,
-    pub triangle_count: i32,
+    pub triangle_count: i64,
     pub support_analysis: SupportAnalysis,
 }
 
@@ -108,7 +108,7 @@ pub fn process_stl_file(file_path: &str) -> Result<ProcessedModel, AppError> {
         })
         .collect();
 
-    let triangle_count = triangles.len() as i32;
+    let triangle_count = triangles.len() as i64;
     let volume_cm3 = calculate_volume(&triangles);
     let dimensions_mm = calculate_dimensions(&triangles);
     let support_analysis = analyze_supports(&triangles);
@@ -151,7 +151,7 @@ pub fn process_3mf_file(file_path: &str) -> Result<ProcessedModel, AppError> {
     // Parse the XML to extract mesh data
     let triangles = parse_3mf_mesh(&model_xml)?;
 
-    let triangle_count = triangles.len() as i32;
+    let triangle_count = triangles.len() as i64;
     let volume_cm3 = calculate_volume(&triangles);
     let dimensions_mm = calculate_dimensions(&triangles);
     let support_analysis = analyze_supports(&triangles);

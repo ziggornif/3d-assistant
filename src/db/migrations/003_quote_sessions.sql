@@ -4,8 +4,8 @@
 
 CREATE TABLE IF NOT EXISTS quote_sessions (
     id TEXT PRIMARY KEY NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    expires_at TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
     status TEXT NOT NULL DEFAULT 'active'
 );
 

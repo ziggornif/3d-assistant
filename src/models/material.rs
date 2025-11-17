@@ -1,3 +1,4 @@
+use chrono::{NaiveDateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -13,8 +14,8 @@ pub struct Material {
     pub color: Option<String>,
     pub properties: Option<String>, // JSON string
     pub active: bool,
-    pub created_at: String,
-    pub updated_at: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 /// Material properties stored as JSON
@@ -39,7 +40,7 @@ impl Material {
         price_per_cm3: f64,
         color: Option<String>,
     ) -> Self {
-        let now = chrono::Utc::now().to_rfc3339();
+        let now = Utc::now().naive_utc();
         Self {
             id,
             service_type_id,
@@ -49,7 +50,7 @@ impl Material {
             color,
             properties: None,
             active: true,
-            created_at: now.clone(),
+            created_at: now,
             updated_at: now,
         }
     }

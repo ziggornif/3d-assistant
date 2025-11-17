@@ -4,10 +4,11 @@ FROM rust:1.91-slim-bookworm AS builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Install build dependencies (PostgreSQL support)
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Rust project files
@@ -22,10 +23,12 @@ FROM debian:bookworm-slim
 
 WORKDIR /app
 
-# Install runtime dependencies
+# Install runtime dependencies (PostgreSQL support)
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary
@@ -37,8 +40,12 @@ COPY static/ /app/static/
 # Copy templates (for SSR)
 COPY templates/ /app/templates/
 
+# Copy database migrations (PostgreSQL)
+COPY src/db/migrations/ /app/src/db/migrations/
+COPY src/db/seed.sql /app/src/db/seed.sql
+
 # Create necessary directories
-RUN mkdir -p /app/data /app/uploads
+RUN mkdir -p /app/uploads
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && \
@@ -48,7 +55,7 @@ USER appuser
 # Environment variables
 ENV HOST=0.0.0.0
 ENV PORT=3000
-ENV DATABASE_URL=sqlite:///app/data/quotes.db?mode=rwc
+# DATABASE_URL must be set via docker-compose or environment
 ENV UPLOAD_DIR=/app/uploads
 ENV STATIC_DIR=/app/static
 ENV TEMPLATE_DIR=/app/templates
