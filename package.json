@@ -20,12 +20,13 @@
     "format:check": "prettier --check 'static/js/**/*.js' 'static/css/**/*.css'"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.1",
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.56.1",
+    "adm-zip": "^0.5.16",
     "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
     "globals": "^16.5.0",
-    "prettier": "^3.6.2",
-    "adm-zip": "^0.5.16"
+    "prettier": "^3.6.2"
   },
   "engines": {
     "node": ">=22.0.0"
