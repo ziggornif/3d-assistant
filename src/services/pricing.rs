@@ -1,6 +1,6 @@
 // Pricing service for quote calculation
-use rust_decimal::prelude::*;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// Base fee for all quotes (handling, setup, etc.)

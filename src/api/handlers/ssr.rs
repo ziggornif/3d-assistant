@@ -9,7 +9,7 @@ use tera::Context;
 use crate::api::handlers::admin::{AdminMaterialResponse, PricingHistoryEntry, PricingHistoryRow};
 use crate::api::middleware::AppError;
 use crate::api::routes::AppState;
-use crate::models::{material::Material, QuoteSession};
+use crate::models::{QuoteSession, material::Material};
 use crate::services::render_template;
 
 /// Render the main index page with SSR data

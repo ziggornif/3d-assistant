@@ -1,15 +1,15 @@
 use axum::{
+    Json,
     extract::{Multipart, Path, State},
     http::StatusCode,
-    Json,
 };
 use serde::Serialize;
 use std::path::PathBuf;
 
-use crate::api::middleware::{sanitize_filename, AppError, AppResult};
+use crate::api::middleware::{AppError, AppResult, sanitize_filename};
 use crate::api::routes::AppState;
 use crate::models::quote::UploadedModel;
-use crate::services::{file_processor, SessionService};
+use crate::services::{SessionService, file_processor};
 
 #[derive(Serialize)]
 pub struct CreateSessionResponse {
@@ -94,10 +94,7 @@ pub async fn upload_model(
                 ];
                 if !valid_mimes.iter().any(|&valid| mime.contains(valid)) {
                     tracing::warn!("Invalid MIME type rejected: {}", mime);
-                    return Err(AppError::FileProcessing(format!(
-                        "Type MIME non autorisé: {}",
-                        mime
-                    )));
+                    return Err(AppError::InvalidFileFormat(mime.clone()));
                 }
             }
 

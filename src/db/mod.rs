@@ -1,5 +1,5 @@
 use anyhow::Result;
-use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
+use sqlx::{Pool, Sqlite, sqlite::SqlitePoolOptions};
 use std::path::Path;
 
 pub mod schema;
@@ -10,10 +10,10 @@ pub type DbPool = Pool<Sqlite>;
 /// Initialize database connection pool
 pub async fn init_pool(database_url: &str) -> Result<DbPool> {
     // Ensure the database directory exists
-    if let Some(path) = database_url.strip_prefix("sqlite://") {
-        if let Some(parent) = Path::new(path).parent() {
-            std::fs::create_dir_all(parent)?;
-        }
+    if let Some(path) = database_url.strip_prefix("sqlite://")
+        && let Some(parent) = Path::new(path).parent()
+    {
+        std::fs::create_dir_all(parent)?;
     }
 
     let pool = SqlitePoolOptions::new()

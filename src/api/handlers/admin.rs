@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Path, State},
     Json,
+    extract::{Path, State},
 };
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -142,19 +142,19 @@ pub async fn update_material(
     let current = current.ok_or_else(|| AppError::MaterialNotFound(id.clone()))?;
     let now = Utc::now().to_rfc3339();
 
-    if let Some(new_price) = body.price_per_cm3 {
-        if (new_price - current.price_per_cm3).abs() > f64::EPSILON {
-            let history_id = Ulid::new().to_string();
-            sqlx::query(r#"INSERT INTO pricing_history (id, material_id, old_price, new_price, changed_by, changed_at) VALUES (?, ?, ?, ?, ?, ?)"#)
-                .bind(&history_id).bind(&id).bind(current.price_per_cm3).bind(new_price).bind("admin").bind(&now)
-                .execute(&state.pool).await?;
-            tracing::info!(
-                "Price changed for material {}: {}€ -> {}€",
-                id,
-                current.price_per_cm3,
-                new_price
-            );
-        }
+    if let Some(new_price) = body.price_per_cm3
+        && (new_price - current.price_per_cm3).abs() > f64::EPSILON
+    {
+        let history_id = Ulid::new().to_string();
+        sqlx::query(r#"INSERT INTO pricing_history (id, material_id, old_price, new_price, changed_by, changed_at) VALUES (?, ?, ?, ?, ?, ?)"#)
+            .bind(&history_id).bind(&id).bind(current.price_per_cm3).bind(new_price).bind("admin").bind(&now)
+            .execute(&state.pool).await?;
+        tracing::info!(
+            "Price changed for material {}: {}€ -> {}€",
+            id,
+            current.price_per_cm3,
+            new_price
+        );
     }
 
     let name = body.name.unwrap_or(current.name);

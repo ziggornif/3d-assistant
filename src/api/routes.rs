@@ -1,8 +1,8 @@
 use axum::{
+    Router,
     extract::DefaultBodyLimit,
     middleware,
     routing::{delete, get, patch, post},
-    Router,
 };
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
@@ -51,27 +51,27 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
         .route("/api/sessions", post(upload::create_session))
         // File upload
         .route(
-            "/api/sessions/:session_id/models",
+            "/api/sessions/{session_id}/models",
             post(upload::upload_model),
         )
         .route(
-            "/api/sessions/:session_id/models/:model_id",
+            "/api/sessions/{session_id}/models/{model_id}",
             delete(upload::delete_model),
         )
         // Materials
         .route("/api/materials", get(materials::list_materials))
         // Model configuration
         .route(
-            "/api/sessions/:session_id/models/:model_id",
+            "/api/sessions/{session_id}/models/{model_id}",
             patch(quote::configure_model),
         )
         // Quote generation
         .route(
-            "/api/sessions/:session_id/quote",
+            "/api/sessions/{session_id}/quote",
             post(quote::generate_quote),
         )
         .route(
-            "/api/sessions/:session_id/quote",
+            "/api/sessions/{session_id}/quote",
             get(quote::get_current_quote),
         )
         // Admin endpoints (protected by auth middleware)
@@ -80,7 +80,7 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
             Router::new()
                 .route("/materials", get(admin::list_materials))
                 .route("/materials", post(admin::create_material))
-                .route("/materials/:id", patch(admin::update_material))
+                .route("/materials/{id}", patch(admin::update_material))
                 .route("/pricing-history", get(admin::get_pricing_history))
                 .route("/cleanup", post(admin::cleanup_expired_sessions))
                 .layer(middleware::from_fn(admin_auth)),

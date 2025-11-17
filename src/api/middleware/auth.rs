@@ -1,6 +1,6 @@
 use axum::{
     extract::Request,
-    http::{header, StatusCode},
+    http::{StatusCode, header},
     middleware::Next,
     response::Response,
 };
@@ -20,10 +20,10 @@ pub async fn admin_auth(request: Request, next: Next) -> Result<Response, Status
     if let Some(cookies) = cookie_header {
         for cookie in cookies.split(';') {
             let cookie = cookie.trim();
-            if let Some(value) = cookie.strip_prefix("admin_token=") {
-                if value == admin_token {
-                    return Ok(next.run(request).await);
-                }
+            if let Some(value) = cookie.strip_prefix("admin_token=")
+                && value == admin_token
+            {
+                return Ok(next.run(request).await);
             }
         }
     }

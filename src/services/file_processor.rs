@@ -260,7 +260,7 @@ fn find_and_read_3mf_model(
 fn extract_component_paths(xml_content: &str) -> Vec<String> {
     let mut paths = Vec::new();
     let mut reader = XmlReader::from_str(xml_content);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
     let mut buf = Vec::new();
 
     loop {
@@ -268,10 +268,10 @@ fn extract_component_paths(xml_content: &str) -> Vec<String> {
             Ok(Event::Empty(ref e)) | Ok(Event::Start(ref e)) => {
                 if e.local_name().as_ref() == b"component" {
                     for attr in e.attributes().flatten() {
-                        if attr.key.local_name().as_ref() == b"path" {
-                            if let Ok(path_str) = std::str::from_utf8(&attr.value) {
-                                paths.push(path_str.to_string());
-                            }
+                        if attr.key.local_name().as_ref() == b"path"
+                            && let Ok(path_str) = std::str::from_utf8(&attr.value)
+                        {
+                            paths.push(path_str.to_string());
                         }
                     }
                 }
@@ -288,7 +288,7 @@ fn extract_component_paths(xml_content: &str) -> Vec<String> {
 /// Parse 3MF XML to extract mesh triangles
 fn parse_3mf_mesh(xml_content: &str) -> Result<Vec<[f32; 9]>, AppError> {
     let mut reader = XmlReader::from_str(xml_content);
-    reader.trim_text(true);
+    reader.config_mut().trim_text(true);
 
     let mut vertices: Vec<[f32; 3]> = Vec::new();
     let mut triangles: Vec<[f32; 9]> = Vec::new();
