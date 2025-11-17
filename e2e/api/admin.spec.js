@@ -4,6 +4,9 @@ import { test, expect } from '@playwright/test';
 const API_BASE = 'http://127.0.0.1:3000';
 const ADMIN_TOKEN = 'admin-secret-token-2025';
 
+// Helper to create cookie header for admin auth
+const adminCookie = { Cookie: `admin_token=${ADMIN_TOKEN}` };
+
 test.describe('Admin Materials API', () => {
   test('should require authentication for admin endpoints', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/admin/materials`);
@@ -12,14 +15,14 @@ test.describe('Admin Materials API', () => {
 
   test('should reject invalid token', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/admin/materials`, {
-      headers: { Authorization: 'Bearer invalid-token' },
+      headers: { Cookie: 'admin_token=invalid-token' },
     });
     expect(response.status()).toBe(401);
   });
 
   test('should list all materials including inactive', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/admin/materials`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
     expect(response.ok()).toBeTruthy();
 
@@ -48,7 +51,7 @@ test.describe('Admin Materials API', () => {
 
     const response = await request.post(`${API_BASE}/api/admin/materials`, {
       headers: {
-        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        ...adminCookie,
         'Content-Type': 'application/json',
       },
       data: newMaterial,
@@ -67,7 +70,7 @@ test.describe('Admin Materials API', () => {
   test('should update material price', async ({ request }) => {
     // Get existing material
     const listRes = await request.get(`${API_BASE}/api/admin/materials`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
     const materials = await listRes.json();
     const material = materials[0];
@@ -76,7 +79,7 @@ test.describe('Admin Materials API', () => {
 
     const response = await request.patch(`${API_BASE}/api/admin/materials/${material.id}`, {
       headers: {
-        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        ...adminCookie,
         'Content-Type': 'application/json',
       },
       data: { price_per_cm3: newPrice },
@@ -89,7 +92,7 @@ test.describe('Admin Materials API', () => {
     // Restore original price
     await request.patch(`${API_BASE}/api/admin/materials/${material.id}`, {
       headers: {
-        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        ...adminCookie,
         'Content-Type': 'application/json',
       },
       data: { price_per_cm3: originalPrice },
@@ -98,7 +101,7 @@ test.describe('Admin Materials API', () => {
 
   test('should toggle material active status', async ({ request }) => {
     const listRes = await request.get(`${API_BASE}/api/admin/materials`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
     const materials = await listRes.json();
     const material = materials[0];
@@ -107,7 +110,7 @@ test.describe('Admin Materials API', () => {
     // Toggle off
     const response = await request.patch(`${API_BASE}/api/admin/materials/${material.id}`, {
       headers: {
-        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        ...adminCookie,
         'Content-Type': 'application/json',
       },
       data: { active: !originalStatus },
@@ -120,7 +123,7 @@ test.describe('Admin Materials API', () => {
     // Restore original status
     await request.patch(`${API_BASE}/api/admin/materials/${material.id}`, {
       headers: {
-        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        ...adminCookie,
         'Content-Type': 'application/json',
       },
       data: { active: originalStatus },
@@ -130,7 +133,7 @@ test.describe('Admin Materials API', () => {
   test('should return 404 for non-existent material', async ({ request }) => {
     const response = await request.patch(`${API_BASE}/api/admin/materials/non-existent-id`, {
       headers: {
-        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        ...adminCookie,
         'Content-Type': 'application/json',
       },
       data: { price_per_cm3: 1.0 },
@@ -143,7 +146,7 @@ test.describe('Admin Materials API', () => {
 test.describe('Admin Pricing History API', () => {
   test('should get pricing history', async ({ request }) => {
     const response = await request.get(`${API_BASE}/api/admin/pricing-history`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
 
     expect(response.ok()).toBeTruthy();
@@ -163,7 +166,7 @@ test.describe('Admin Pricing History API', () => {
   test('pricing history should track price changes', async ({ request }) => {
     // Get a material and change its price
     const listRes = await request.get(`${API_BASE}/api/admin/materials`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
     const materials = await listRes.json();
     const material = materials[0];
@@ -173,7 +176,7 @@ test.describe('Admin Pricing History API', () => {
     // Update price
     await request.patch(`${API_BASE}/api/admin/materials/${material.id}`, {
       headers: {
-        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        ...adminCookie,
         'Content-Type': 'application/json',
       },
       data: { price_per_cm3: newPrice },
@@ -181,7 +184,7 @@ test.describe('Admin Pricing History API', () => {
 
     // Check history
     const historyRes = await request.get(`${API_BASE}/api/admin/pricing-history`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
     const history = await historyRes.json();
 
@@ -198,7 +201,7 @@ test.describe('Admin Pricing History API', () => {
     // Restore original price
     await request.patch(`${API_BASE}/api/admin/materials/${material.id}`, {
       headers: {
-        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        ...adminCookie,
         'Content-Type': 'application/json',
       },
       data: { price_per_cm3: originalPrice },
@@ -214,7 +217,7 @@ test.describe('Admin Session Cleanup API', () => {
 
   test('should cleanup expired sessions', async ({ request }) => {
     const response = await request.post(`${API_BASE}/api/admin/cleanup`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
 
     expect(response.ok()).toBeTruthy();
@@ -232,10 +235,10 @@ test.describe('Admin Session Cleanup API', () => {
   test('cleanup should handle empty database gracefully', async ({ request }) => {
     // Multiple cleanups should be idempotent
     const response1 = await request.post(`${API_BASE}/api/admin/cleanup`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
     const response2 = await request.post(`${API_BASE}/api/admin/cleanup`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
 
     expect(response1.ok()).toBeTruthy();
@@ -257,7 +260,7 @@ test.describe('Admin Session Cleanup API', () => {
 
     // Run cleanup
     const cleanupRes = await request.post(`${API_BASE}/api/admin/cleanup`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminCookie,
     });
     const cleanupResult = await cleanupRes.json();
 
