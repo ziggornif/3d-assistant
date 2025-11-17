@@ -37,7 +37,7 @@ pub async fn configure_model(
     let model: Option<UploadedModel> = sqlx::query_as(
         r#"
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at
+               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
         FROM uploaded_models
         WHERE id = ? AND session_id = ?
         "#,
@@ -124,7 +124,7 @@ pub async fn generate_quote(
     let models: Vec<UploadedModel> = sqlx::query_as(
         r#"
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at
+               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
         FROM uploaded_models
         WHERE session_id = ?
         "#,
@@ -156,16 +156,26 @@ pub async fn generate_quote(
         .fetch_one(&state.pool)
         .await?;
 
-        let volume = model.volume_cm3.unwrap_or(0.0);
+        let base_volume = model.volume_cm3.unwrap_or(0.0);
+
+        // Calculate support volume based on support analysis
+        let support_percentage = model
+            .get_support_analysis()
+            .map(|s| s.estimated_support_material_percentage as f64)
+            .unwrap_or(0.0);
+
+        let support_volume = base_volume * (support_percentage / 100.0);
+        let total_volume = base_volume + support_volume;
+
         let material_cost =
-            crate::services::pricing::calculate_model_price(volume, material.price_per_cm3);
+            crate::services::pricing::calculate_model_price(total_volume, material.price_per_cm3);
 
         items.push(crate::services::pricing::QuoteItem {
             model_id: model.id.clone(),
             model_name: model.filename.clone(),
             material_id: material.id.clone(),
             material_name: material.name.clone(),
-            volume_cm3: volume,
+            volume_cm3: total_volume,
             price_per_cm3: material.price_per_cm3,
             material_cost,
         });
@@ -244,7 +254,7 @@ pub async fn get_current_quote(
     let models: Vec<UploadedModel> = sqlx::query_as(
         r#"
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at
+               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
         FROM uploaded_models
         WHERE session_id = ?
         "#,
@@ -270,16 +280,28 @@ pub async fn get_current_quote(
             .await?;
 
             if let Some(material) = material {
-                let volume = model.volume_cm3.unwrap_or(0.0);
-                let material_cost =
-                    crate::services::pricing::calculate_model_price(volume, material.price_per_cm3);
+                let base_volume = model.volume_cm3.unwrap_or(0.0);
+
+                // Calculate support volume based on support analysis
+                let support_percentage = model
+                    .get_support_analysis()
+                    .map(|s| s.estimated_support_material_percentage as f64)
+                    .unwrap_or(0.0);
+
+                let support_volume = base_volume * (support_percentage / 100.0);
+                let total_volume = base_volume + support_volume;
+
+                let material_cost = crate::services::pricing::calculate_model_price(
+                    total_volume,
+                    material.price_per_cm3,
+                );
 
                 items.push(crate::services::pricing::QuoteItem {
                     model_id: model.id.clone(),
                     model_name: model.filename.clone(),
                     material_id: material.id.clone(),
                     material_name: material.name.clone(),
-                    volume_cm3: volume,
+                    volume_cm3: total_volume,
                     price_per_cm3: material.price_per_cm3,
                     material_cost,
                 });

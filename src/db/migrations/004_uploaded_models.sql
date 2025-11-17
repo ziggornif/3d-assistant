@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS uploaded_models (
     triangle_count INTEGER,
     material_id TEXT REFERENCES materials(id),
     file_path TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    support_analysis TEXT -- JSON: {needs_support: bool, overhang_percentage: float, estimated_support_material_percentage: float}
 );
 
 CREATE INDEX IF NOT EXISTS idx_uploaded_models_session ON uploaded_models(session_id);

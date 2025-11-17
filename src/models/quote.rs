@@ -56,6 +56,7 @@ pub struct UploadedModel {
     pub material_id: Option<String>,
     pub file_path: String,
     pub created_at: String,
+    pub support_analysis: Option<String>, // JSON: {needs_support, overhang_percentage, estimated_support_material_percentage}
 }
 
 /// Dimensions of a 3D model in millimeters
@@ -87,6 +88,7 @@ impl UploadedModel {
             material_id: None,
             file_path,
             created_at: Utc::now().to_rfc3339(),
+            support_analysis: None,
         }
     }
 
@@ -98,6 +100,21 @@ impl UploadedModel {
     /// Get model dimensions
     pub fn get_dimensions(&self) -> Option<Dimensions> {
         self.dimensions_mm
+            .as_ref()
+            .and_then(|s| serde_json::from_str(s).ok())
+    }
+
+    /// Set support analysis data
+    pub fn set_support_analysis(
+        &mut self,
+        analysis: crate::services::file_processor::SupportAnalysis,
+    ) {
+        self.support_analysis = Some(serde_json::to_string(&analysis).unwrap_or_default());
+    }
+
+    /// Get support analysis data
+    pub fn get_support_analysis(&self) -> Option<crate::services::file_processor::SupportAnalysis> {
+        self.support_analysis
             .as_ref()
             .and_then(|s| serde_json::from_str(s).ok())
     }

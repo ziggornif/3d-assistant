@@ -11,6 +11,18 @@ pub struct ProcessedModel {
     pub volume_cm3: f64,
     pub dimensions_mm: Dimensions,
     pub triangle_count: i32,
+    pub support_analysis: SupportAnalysis,
+}
+
+/// Support structure analysis result
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SupportAnalysis {
+    /// Whether the model likely needs support structures
+    pub needs_support: bool,
+    /// Percentage of surface area with overhangs (> 45°)
+    pub overhang_percentage: f32,
+    /// Estimated additional material percentage for supports
+    pub estimated_support_material_percentage: f32,
 }
 
 /// Validate file format and size
@@ -99,11 +111,13 @@ pub fn process_stl_file(file_path: &str) -> Result<ProcessedModel, AppError> {
     let triangle_count = triangles.len() as i32;
     let volume_cm3 = calculate_volume(&triangles);
     let dimensions_mm = calculate_dimensions(&triangles);
+    let support_analysis = analyze_supports(&triangles);
 
     Ok(ProcessedModel {
         volume_cm3,
         dimensions_mm,
         triangle_count,
+        support_analysis,
     })
 }
 
@@ -115,6 +129,22 @@ pub fn process_3mf_file(file_path: &str) -> Result<ProcessedModel, AppError> {
     let mut archive = zip::ZipArchive::new(file)
         .map_err(|e| AppError::FileProcessing(format!("Erreur de lecture ZIP: {}", e)))?;
 
+    // ZIP bomb protection: check total uncompressed size
+    let max_uncompressed_size: u64 = 200 * 1024 * 1024; // 200MB max uncompressed
+    let mut total_size: u64 = 0;
+    for i in 0..archive.len() {
+        if let Ok(file) = archive.by_index(i) {
+            total_size += file.size();
+        }
+    }
+
+    if total_size > max_uncompressed_size {
+        return Err(AppError::FileProcessing(format!(
+            "Archive trop volumineuse après décompression: {} octets (max: {} octets)",
+            total_size, max_uncompressed_size
+        )));
+    }
+
     // Find the 3D model file (usually 3D/3dmodel.model)
     let model_xml = find_and_read_3mf_model(&mut archive)?;
 
@@ -124,11 +154,13 @@ pub fn process_3mf_file(file_path: &str) -> Result<ProcessedModel, AppError> {
     let triangle_count = triangles.len() as i32;
     let volume_cm3 = calculate_volume(&triangles);
     let dimensions_mm = calculate_dimensions(&triangles);
+    let support_analysis = analyze_supports(&triangles);
 
     Ok(ProcessedModel {
         volume_cm3,
         dimensions_mm,
         triangle_count,
+        support_analysis,
     })
 }
 
@@ -136,6 +168,9 @@ pub fn process_3mf_file(file_path: &str) -> Result<ProcessedModel, AppError> {
 fn find_and_read_3mf_model(
     archive: &mut zip::ZipArchive<std::fs::File>,
 ) -> Result<String, AppError> {
+    // XML bomb protection: max size for a single model file (100MB should be plenty for any 3D model)
+    const MAX_MODEL_FILE_SIZE: u64 = 100 * 1024 * 1024;
+
     // Try common locations for the 3D model file
     let possible_paths = vec!["3D/3dmodel.model", "3d/3dmodel.model", "3D/3DModel.model"];
 
@@ -143,6 +178,14 @@ fn find_and_read_3mf_model(
     let mut main_model_content = None;
     for path in &possible_paths {
         if let Ok(mut file) = archive.by_name(path) {
+            // Check file size before reading (XML bomb protection)
+            if file.size() > MAX_MODEL_FILE_SIZE {
+                return Err(AppError::FileProcessing(format!(
+                    "Fichier modèle trop volumineux: {} octets (max: {} octets)",
+                    file.size(),
+                    MAX_MODEL_FILE_SIZE
+                )));
+            }
             let mut contents = String::new();
             file.read_to_string(&mut contents).map_err(|e| {
                 AppError::FileProcessing(format!("Erreur de lecture du modèle 3MF: {}", e))
@@ -193,6 +236,14 @@ fn find_and_read_3mf_model(
 
     if let Some(idx) = largest_model {
         let mut file = archive.by_index(idx).unwrap();
+        // XML bomb protection: check file size
+        if file.size() > MAX_MODEL_FILE_SIZE {
+            return Err(AppError::FileProcessing(format!(
+                "Fichier modèle trop volumineux: {} octets (max: {} octets)",
+                file.size(),
+                MAX_MODEL_FILE_SIZE
+            )));
+        }
         let mut contents = String::new();
         file.read_to_string(&mut contents).map_err(|e| {
             AppError::FileProcessing(format!("Erreur de lecture du modèle 3MF: {}", e))
@@ -403,6 +454,110 @@ pub fn calculate_dimensions(triangles: &[[f32; 9]]) -> Dimensions {
         x: (max_x - min_x) as f64,
         y: (max_y - min_y) as f64,
         z: (max_z - min_z) as f64,
+    }
+}
+
+/// Analyze mesh for support structure requirements
+/// Detects overhangs by checking triangle normals against the Z axis (print direction)
+/// Overhangs > 45° from vertical typically need support
+pub fn analyze_supports(triangles: &[[f32; 9]]) -> SupportAnalysis {
+    if triangles.is_empty() {
+        return SupportAnalysis {
+            needs_support: false,
+            overhang_percentage: 0.0,
+            estimated_support_material_percentage: 0.0,
+        };
+    }
+
+    // First pass: find the minimum Z (build plate level)
+    let mut min_z = f32::MAX;
+    for tri in triangles {
+        for i in 0..3 {
+            let z = tri[i * 3 + 2];
+            min_z = min_z.min(z);
+        }
+    }
+
+    // Tolerance for "on the build plate" (0.5mm)
+    let build_plate_tolerance = 0.5;
+
+    let mut overhang_area = 0.0f64;
+    let mut total_area = 0.0f64;
+
+    for tri in triangles {
+        // Extract vertices
+        let v0 = [tri[0], tri[1], tri[2]];
+        let v1 = [tri[3], tri[4], tri[5]];
+        let v2 = [tri[6], tri[7], tri[8]];
+
+        // Calculate triangle normal using cross product
+        let edge1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
+        let edge2 = [v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2]];
+
+        let normal = [
+            edge1[1] * edge2[2] - edge1[2] * edge2[1],
+            edge1[2] * edge2[0] - edge1[0] * edge2[2],
+            edge1[0] * edge2[1] - edge1[1] * edge2[0],
+        ];
+
+        // Calculate normal magnitude (also gives us 2x triangle area)
+        let normal_magnitude =
+            (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+
+        if normal_magnitude < 1e-10 {
+            continue; // Degenerate triangle
+        }
+
+        // Triangle area = 0.5 * |cross product|
+        let triangle_area = (normal_magnitude / 2.0) as f64;
+        total_area += triangle_area;
+
+        // Normalize the normal vector
+        let nz = normal[2] / normal_magnitude;
+
+        // Check if this is an overhang
+        // If normal points downward (negative Z component), it's an overhang
+        // The threshold is 45° from vertical, which means nz < -cos(45°) ≈ -0.707
+        // nz < -sin(45°) = -0.707 means the face is tilted down
+        if nz < -0.707 {
+            // But ignore faces that are on or very close to the build plate
+            // These don't need support as they rest on the plate
+            let triangle_min_z = v0[2].min(v1[2]).min(v2[2]);
+            if triangle_min_z > min_z + build_plate_tolerance {
+                // This face is above the build plate and pointing down = needs support
+                overhang_area += triangle_area;
+            }
+        }
+    }
+
+    let overhang_percentage = if total_area > 0.0 {
+        ((overhang_area / total_area) * 100.0) as f32
+    } else {
+        0.0
+    };
+
+    // Estimate support material based on overhang percentage
+    // This is a rough approximation:
+    // - 0-5% overhang: minimal supports (5% extra material)
+    // - 5-15% overhang: moderate supports (10% extra material)
+    // - 15-30% overhang: significant supports (20% extra material)
+    // - >30% overhang: heavy supports (30% extra material)
+    let estimated_support_material_percentage = if overhang_percentage < 1.0 {
+        0.0
+    } else if overhang_percentage < 5.0 {
+        5.0
+    } else if overhang_percentage < 15.0 {
+        10.0
+    } else if overhang_percentage < 30.0 {
+        20.0
+    } else {
+        30.0
+    };
+
+    SupportAnalysis {
+        needs_support: overhang_percentage > 1.0,
+        overhang_percentage,
+        estimated_support_material_percentage,
     }
 }
 

@@ -82,6 +82,25 @@ pub async fn upload_model(
             let raw_filename = file_name_opt
                 .ok_or_else(|| AppError::FileProcessing("Nom de fichier manquant".to_string()))?;
 
+            // Validate MIME type for security (prevent executable uploads)
+            if let Some(ref mime) = content_type {
+                let valid_mimes = [
+                    "application/sla",
+                    "model/stl",
+                    "application/vnd.ms-3mfdocument",
+                    "application/x-3mf",
+                    "application/octet-stream", // Generic binary, common for 3D files
+                    "model/3mf",
+                ];
+                if !valid_mimes.iter().any(|&valid| mime.contains(valid)) {
+                    tracing::warn!("Invalid MIME type rejected: {}", mime);
+                    return Err(AppError::FileProcessing(format!(
+                        "Type MIME non autorisé: {}",
+                        mime
+                    )));
+                }
+            }
+
             // Sanitize filename to prevent directory traversal attacks
             let filename = sanitize_filename(&raw_filename);
 
@@ -172,13 +191,14 @@ pub async fn upload_model(
     model.volume_cm3 = Some(processed.volume_cm3);
     model.set_dimensions(processed.dimensions_mm);
     model.triangle_count = Some(processed.triangle_count);
+    model.set_support_analysis(processed.support_analysis.clone());
 
     // Save to database
     sqlx::query(
         r#"
         INSERT INTO uploaded_models
-        (id, session_id, filename, file_format, file_size_bytes, volume_cm3, dimensions_mm, triangle_count, material_id, file_path, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, session_id, filename, file_format, file_size_bytes, volume_cm3, dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
     .bind(&model.id)
@@ -192,6 +212,7 @@ pub async fn upload_model(
     .bind(&model.material_id)
     .bind(&model.file_path)
     .bind(&model.created_at)
+    .bind(&model.support_analysis)
     .execute(&state.pool)
     .await?;
 
@@ -238,7 +259,7 @@ pub async fn delete_model(
     let model: Option<UploadedModel> = sqlx::query_as(
         r#"
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at
+               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
         FROM uploaded_models
         WHERE id = ? AND session_id = ?
         "#,
