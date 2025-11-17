@@ -18,8 +18,8 @@ pub fn sanitize_filename(filename: &str) -> String {
     let sanitized = sanitized.trim();
     if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
         "unnamed".to_string()
-    } else if sanitized.starts_with('.') {
-        format!("_{}", &sanitized[1..])
+    } else if let Some(stripped) = sanitized.strip_prefix('.') {
+        format!("_{}", stripped)
     } else {
         sanitized.to_string()
     }

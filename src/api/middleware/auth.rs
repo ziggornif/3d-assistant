@@ -46,11 +46,7 @@ pub fn get_admin_user(_request: &Request) -> String {
 /// Extract token from Authorization header
 #[allow(dead_code)]
 pub fn extract_bearer_token(auth_header: &str) -> Option<&str> {
-    if auth_header.starts_with("Bearer ") {
-        Some(&auth_header[7..])
-    } else {
-        None
-    }
+    auth_header.strip_prefix("Bearer ")
 }
 
 /// Validate token against expected value

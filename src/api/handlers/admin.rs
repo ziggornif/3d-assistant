@@ -10,6 +10,17 @@ use crate::api::middleware::{AppError, AppResult};
 use crate::api::routes::AppState;
 use crate::models::material::Material;
 
+// Type alias for pricing history query result to avoid clippy::type_complexity
+pub type PricingHistoryRow = (
+    String,
+    String,
+    Option<f64>,
+    f64,
+    Option<String>,
+    String,
+    String,
+);
+
 #[derive(Serialize)]
 pub struct AdminMaterialResponse {
     pub id: String,
@@ -187,10 +198,12 @@ pub struct PricingHistoryEntry {
 pub async fn get_pricing_history(
     State(state): State<AppState>,
 ) -> AppResult<Json<Vec<PricingHistoryEntry>>> {
-    let entries: Vec<(String, String, Option<f64>, f64, Option<String>, String, String)> = sqlx::query_as(
+    let entries: Vec<PricingHistoryRow> = sqlx::query_as(
         r#"SELECT ph.id, ph.material_id, ph.old_price, ph.new_price, ph.changed_by, ph.changed_at, m.name
         FROM pricing_history ph JOIN materials m ON ph.material_id = m.id ORDER BY ph.changed_at DESC LIMIT 100"#,
-    ).fetch_all(&state.pool).await?;
+    )
+    .fetch_all(&state.pool)
+    .await?;
 
     let history: Vec<PricingHistoryEntry> = entries
         .into_iter()

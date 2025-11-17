@@ -6,7 +6,7 @@ use axum_extra::extract::cookie::{Cookie, CookieJar};
 use serde::Deserialize;
 use tera::Context;
 
-use crate::api::handlers::admin::{AdminMaterialResponse, PricingHistoryEntry};
+use crate::api::handlers::admin::{AdminMaterialResponse, PricingHistoryEntry, PricingHistoryRow};
 use crate::api::middleware::AppError;
 use crate::api::routes::AppState;
 use crate::models::{material::Material, QuoteSession};
@@ -95,10 +95,12 @@ pub async fn admin_page(
             .map_err(|e| AppError::Internal(format!("Failed to serialize materials: {}", e)))?;
 
         // Fetch pricing history
-        let entries: Vec<(String, String, Option<f64>, f64, Option<String>, String, String)> = sqlx::query_as(
+        let entries: Vec<PricingHistoryRow> = sqlx::query_as(
             r#"SELECT ph.id, ph.material_id, ph.old_price, ph.new_price, ph.changed_by, ph.changed_at, m.name
             FROM pricing_history ph JOIN materials m ON ph.material_id = m.id ORDER BY ph.changed_at DESC LIMIT 100"#,
-        ).fetch_all(&state.pool).await?;
+        )
+        .fetch_all(&state.pool)
+        .await?;
 
         let pricing_history: Vec<PricingHistoryEntry> = entries
             .into_iter()
