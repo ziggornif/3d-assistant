@@ -84,18 +84,18 @@ function setupEventListeners() {
   // Listen for session changes
   sessionManager.addListener((eventType, data) => {
     switch (eventType) {
-      case 'model-added':
-        onModelAdded(data);
-        break;
-      case 'model-removed':
-        onModelRemoved(data);
-        break;
-      case 'model-updated':
-        onModelUpdated(data);
-        break;
-      case 'session-cleared':
-        onSessionCleared();
-        break;
+    case 'model-added':
+      onModelAdded(data);
+      break;
+    case 'model-removed':
+      onModelRemoved(data);
+      break;
+    case 'model-updated':
+      onModelUpdated(data);
+      break;
+    case 'session-cleared':
+      onSessionCleared();
+      break;
     }
   });
 

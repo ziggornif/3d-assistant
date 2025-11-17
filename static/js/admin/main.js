@@ -226,8 +226,8 @@ function renderMaterials() {
       </thead>
       <tbody>
         ${materials
-          .map(
-            m => `
+    .map(
+      m => `
           <tr>
             <td><span class="color-preview" style="background-color: ${m.color || '#CCCCCC'}"></span></td>
             <td>${escapeHtml(m.name)}</td>
@@ -239,8 +239,8 @@ function renderMaterials() {
             </td>
           </tr>
         `
-          )
-          .join('')}
+    )
+    .join('')}
       </tbody>
     </table>
   `;
@@ -336,8 +336,8 @@ function renderPricingHistory(history) {
   const html = `
     <div class="history-list">
       ${history
-        .map(
-          entry => `
+    .map(
+      entry => `
         <div class="history-entry">
           <div>
             <span class="history-material">${escapeHtml(entry.material_name)}</span>
@@ -348,8 +348,8 @@ function renderPricingHistory(history) {
           <div class="history-date">${new Date(entry.changed_at).toLocaleString('fr-FR')}</div>
         </div>
       `
-        )
-        .join('')}
+    )
+    .join('')}
     </div>
   `;
   pricingHistoryDiv.innerHTML = html;
