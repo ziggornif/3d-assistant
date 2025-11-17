@@ -4,7 +4,6 @@ debug/
 release/
 *.rs.bk
 *.rlib
-Cargo.lock
 *.pdb
 
 # Node.js/Frontend
