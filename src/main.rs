@@ -22,19 +22,14 @@ async fn main() -> Result<()> {
 
     // Load configuration
     let config = config::Config::from_env()?;
-    tracing::info!(
-        "Configuration loaded: {}:{}",
-        config.host,
-        config.port
-    );
+    tracing::info!("Configuration loaded: {}:{}", config.host, config.port);
 
     // Ensure upload directory exists
     std::fs::create_dir_all(&config.upload_dir)?;
     tracing::info!("Upload directory: {}", config.upload_dir);
 
     // Initialize templates for SSR
-    services::init_templates(&config.template_dir)
-        .expect("Failed to load templates");
+    services::init_templates(&config.template_dir).expect("Failed to load templates");
     tracing::info!("Templates loaded from: {}", config.template_dir);
 
     // Initialize database

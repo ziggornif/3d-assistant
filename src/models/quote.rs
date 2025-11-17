@@ -1,6 +1,6 @@
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use chrono::{DateTime, Utc, Duration};
 use ulid::Ulid;
 
 /// Represents a user's quote session

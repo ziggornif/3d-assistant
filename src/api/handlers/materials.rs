@@ -27,9 +27,10 @@ pub async fn list_materials(
     State(state): State<AppState>,
     Query(query): Query<MaterialsQuery>,
 ) -> AppResult<Json<Vec<MaterialResponse>>> {
-    let materials: Vec<crate::models::material::Material> = if let Some(service_type) = query.service_type {
-        sqlx::query_as(
-            r#"
+    let materials: Vec<crate::models::material::Material> =
+        if let Some(service_type) = query.service_type {
+            sqlx::query_as(
+                r#"
             SELECT m.id, m.service_type_id, m.name, m.description, m.price_per_cm3,
                    m.color, m.properties, m.active, m.created_at, m.updated_at
             FROM materials m
@@ -37,23 +38,23 @@ pub async fn list_materials(
             WHERE st.name = ? AND m.active = 1
             ORDER BY m.name
             "#,
-        )
-        .bind(&service_type)
-        .fetch_all(&state.pool)
-        .await?
-    } else {
-        sqlx::query_as(
-            r#"
+            )
+            .bind(&service_type)
+            .fetch_all(&state.pool)
+            .await?
+        } else {
+            sqlx::query_as(
+                r#"
             SELECT id, service_type_id, name, description, price_per_cm3,
                    color, properties, active, created_at, updated_at
             FROM materials
             WHERE active = 1
             ORDER BY name
             "#,
-        )
-        .fetch_all(&state.pool)
-        .await?
-    };
+            )
+            .fetch_all(&state.pool)
+            .await?
+        };
 
     let response: Vec<MaterialResponse> = materials
         .into_iter()

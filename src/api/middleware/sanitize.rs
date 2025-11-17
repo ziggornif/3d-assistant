@@ -11,13 +11,7 @@ pub fn sanitize_filename(filename: &str) -> String {
     // Remove or replace dangerous characters
     let sanitized: String = name
         .chars()
-        .filter(|c| {
-            c.is_alphanumeric()
-                || *c == '.'
-                || *c == '-'
-                || *c == '_'
-                || *c == ' '
-        })
+        .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_' || *c == ' ')
         .collect();
 
     // Ensure it's not empty and doesn't start with a dot (hidden file)
@@ -72,7 +66,10 @@ pub fn sanitize_material_name(name: &str) -> Result<String, String> {
 #[allow(dead_code)]
 pub fn validate_session_id(id: &str) -> bool {
     // ULID is 26 characters, uppercase alphanumeric (Crockford's Base32: 0-9, A-Z)
-    id.len() == 26 && id.chars().all(|c| c.is_ascii_digit() || (c.is_ascii_alphabetic() && c.is_ascii_uppercase()))
+    id.len() == 26
+        && id
+            .chars()
+            .all(|c| c.is_ascii_digit() || (c.is_ascii_alphabetic() && c.is_ascii_uppercase()))
 }
 
 /// Validate a material ID format
@@ -252,7 +249,10 @@ mod tests {
     #[test]
     fn test_sanitize_material_name_valid() {
         assert_eq!(sanitize_material_name("PLA Blanc").unwrap(), "PLA Blanc");
-        assert_eq!(sanitize_material_name("ABS résistant").unwrap(), "ABS résistant");
+        assert_eq!(
+            sanitize_material_name("ABS résistant").unwrap(),
+            "ABS résistant"
+        );
     }
 
     #[test]

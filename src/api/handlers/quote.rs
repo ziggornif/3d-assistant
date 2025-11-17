@@ -62,9 +62,7 @@ pub async fn configure_model(
     .fetch_optional(&state.pool)
     .await?;
 
-    let material = material.ok_or_else(|| {
-        AppError::MaterialNotFound(body.material_id.clone())
-    })?;
+    let material = material.ok_or_else(|| AppError::MaterialNotFound(body.material_id.clone()))?;
 
     // Update model with material_id
     sqlx::query("UPDATE uploaded_models SET material_id = ? WHERE id = ?")
@@ -159,7 +157,8 @@ pub async fn generate_quote(
         .await?;
 
         let volume = model.volume_cm3.unwrap_or(0.0);
-        let material_cost = crate::services::pricing::calculate_model_price(volume, material.price_per_cm3);
+        let material_cost =
+            crate::services::pricing::calculate_model_price(volume, material.price_per_cm3);
 
         items.push(crate::services::pricing::QuoteItem {
             model_id: model.id.clone(),
@@ -272,7 +271,8 @@ pub async fn get_current_quote(
 
             if let Some(material) = material {
                 let volume = model.volume_cm3.unwrap_or(0.0);
-                let material_cost = crate::services::pricing::calculate_model_price(volume, material.price_per_cm3);
+                let material_cost =
+                    crate::services::pricing::calculate_model_price(volume, material.price_per_cm3);
 
                 items.push(crate::services::pricing::QuoteItem {
                     model_id: model.id.clone(),

@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
-use tera::Tera;
 use std::sync::RwLock;
+use tera::Tera;
 
 /// Global Tera instance for template rendering
 static TEMPLATES: Lazy<RwLock<Tera>> = Lazy::new(|| {

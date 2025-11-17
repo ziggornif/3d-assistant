@@ -316,10 +316,10 @@ class QuoteSummary extends HTMLElement {
         ${minimumNoticeHtml}
       </div>
       ${
-  this.quoteData.quote_id
-    ? `<div class="quote-id">Devis #${this.quoteData.quote_id.substring(0, 8)}</div>`
-    : ''
-}
+        this.quoteData.quote_id
+          ? `<div class="quote-id">Devis #${this.quoteData.quote_id.substring(0, 8)}</div>`
+          : ''
+      }
       <div class="actions">
         <button class="btn-generate" id="generate-btn">
           ${this.quoteData.quote_id ? 'Regénérer le devis' : 'Finaliser le devis'}

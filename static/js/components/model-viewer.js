@@ -477,11 +477,7 @@ class ModelViewer extends HTMLElement {
     this.mainLight.shadow.camera.far = maxDim * 4;
 
     // Position light relative to model size
-    this.mainLight.position.set(
-      center.x + maxDim,
-      center.y + maxDim * 2,
-      center.z + maxDim
-    );
+    this.mainLight.position.set(center.x + maxDim, center.y + maxDim * 2, center.z + maxDim);
     this.mainLight.target.position.copy(center);
     this.scene.add(this.mainLight.target);
 

@@ -1,21 +1,19 @@
 use axum::{
-    extract::{State, Form},
-    response::{Html, Redirect, IntoResponse},
+    extract::{Form, State},
+    response::{Html, IntoResponse, Redirect},
 };
+use axum_extra::extract::cookie::{Cookie, CookieJar};
 use serde::Deserialize;
 use tera::Context;
-use axum_extra::extract::cookie::{CookieJar, Cookie};
 
-use crate::api::routes::AppState;
-use crate::api::middleware::AppError;
-use crate::models::{QuoteSession, material::Material};
-use crate::services::render_template;
 use crate::api::handlers::admin::{AdminMaterialResponse, PricingHistoryEntry};
+use crate::api::middleware::AppError;
+use crate::api::routes::AppState;
+use crate::models::{material::Material, QuoteSession};
+use crate::services::render_template;
 
 /// Render the main index page with SSR data
-pub async fn index_page(
-    State(state): State<AppState>,
-) -> Result<Html<String>, AppError> {
+pub async fn index_page(State(state): State<AppState>) -> Result<Html<String>, AppError> {
     // Create a new session
     let session = QuoteSession::new();
     sqlx::query(
@@ -91,7 +89,8 @@ pub async fn admin_page(
         .fetch_all(&state.pool)
         .await?;
 
-        let admin_materials: Vec<AdminMaterialResponse> = materials.into_iter().map(Into::into).collect();
+        let admin_materials: Vec<AdminMaterialResponse> =
+            materials.into_iter().map(Into::into).collect();
         let materials_json = serde_json::to_string(&admin_materials)
             .map_err(|e| AppError::Internal(format!("Failed to serialize materials: {}", e)))?;
 
@@ -101,9 +100,22 @@ pub async fn admin_page(
             FROM pricing_history ph JOIN materials m ON ph.material_id = m.id ORDER BY ph.changed_at DESC LIMIT 100"#,
         ).fetch_all(&state.pool).await?;
 
-        let pricing_history: Vec<PricingHistoryEntry> = entries.into_iter().map(|(id, material_id, old_price, new_price, changed_by, changed_at, material_name)| {
-            PricingHistoryEntry { id, material_id, material_name, old_price, new_price, changed_by, changed_at }
-        }).collect();
+        let pricing_history: Vec<PricingHistoryEntry> = entries
+            .into_iter()
+            .map(
+                |(id, material_id, old_price, new_price, changed_by, changed_at, material_name)| {
+                    PricingHistoryEntry {
+                        id,
+                        material_id,
+                        material_name,
+                        old_price,
+                        new_price,
+                        changed_by,
+                        changed_at,
+                    }
+                },
+            )
+            .collect();
 
         let pricing_history_json = serde_json::to_string(&pricing_history)
             .map_err(|e| AppError::Internal(format!("Failed to serialize history: {}", e)))?;
@@ -124,7 +136,10 @@ pub async fn admin_page(
     let html = render_template("admin.html", &context)
         .map_err(|e| AppError::Internal(format!("Template rendering failed: {}", e)))?;
 
-    tracing::info!("SSR rendered admin page (authenticated: {})", is_authenticated);
+    tracing::info!(
+        "SSR rendered admin page (authenticated: {})",
+        is_authenticated
+    );
     Ok(Html(html))
 }
 
@@ -157,9 +172,7 @@ pub async fn admin_login(
 }
 
 /// Handle admin logout
-pub async fn admin_logout(
-    jar: CookieJar,
-) -> impl IntoResponse {
+pub async fn admin_logout(jar: CookieJar) -> impl IntoResponse {
     // Remove auth cookie
     let cookie = Cookie::build(("admin_token", ""))
         .path("/")

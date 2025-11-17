@@ -6,7 +6,7 @@ use axum::{
 use serde::Serialize;
 use std::path::PathBuf;
 
-use crate::api::middleware::{AppError, AppResult, sanitize_filename};
+use crate::api::middleware::{sanitize_filename, AppError, AppResult};
 use crate::api::routes::AppState;
 use crate::models::quote::UploadedModel;
 use crate::services::{file_processor, SessionService};
@@ -63,14 +63,10 @@ pub async fn upload_model(
     // Process multipart upload
     let mut file_data: Option<(String, Vec<u8>)> = None;
 
-    while let Some(mut field) = multipart
-        .next_field()
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to get next field: {:?}", e);
-            AppError::FileProcessing(format!("Erreur multipart: {}", e))
-        })?
-    {
+    while let Some(mut field) = multipart.next_field().await.map_err(|e| {
+        tracing::error!("Failed to get next field: {:?}", e);
+        AppError::FileProcessing(format!("Erreur multipart: {}", e))
+    })? {
         let field_name = field.name().unwrap_or("unknown").to_string();
         let file_name_opt = field.file_name().map(|s| s.to_string());
         let content_type = field.content_type().map(|s| s.to_string());
@@ -117,8 +113,8 @@ pub async fn upload_model(
         }
     }
 
-    let (filename, bytes) = file_data
-        .ok_or_else(|| AppError::FileProcessing("Aucun fichier trouvé".to_string()))?;
+    let (filename, bytes) =
+        file_data.ok_or_else(|| AppError::FileProcessing("Aucun fichier trouvé".to_string()))?;
 
     // Validate file
     let file_format =
@@ -206,11 +202,13 @@ pub async fn upload_model(
         processed.volume_cm3
     );
 
-    let dims = model.get_dimensions().unwrap_or(crate::models::quote::Dimensions {
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
-    });
+    let dims = model
+        .get_dimensions()
+        .unwrap_or(crate::models::quote::Dimensions {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        });
 
     Ok(Json(UploadModelResponse {
         model_id: model.id.clone(),

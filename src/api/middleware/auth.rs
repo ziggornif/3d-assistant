@@ -19,8 +19,8 @@ pub async fn admin_auth(request: Request, next: Next) -> Result<Response, Status
 
             // For MVP, use a simple token from environment
             // In production, this would validate JWT or session
-            let admin_token = std::env::var("ADMIN_TOKEN")
-                .unwrap_or_else(|_| "admin-secret-token".to_string());
+            let admin_token =
+                std::env::var("ADMIN_TOKEN").unwrap_or_else(|_| "admin-secret-token".to_string());
 
             if token == admin_token {
                 Ok(next.run(request).await)

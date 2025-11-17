@@ -10,7 +10,7 @@
  */
 export function trapFocus(container) {
   const focusableElements = container.querySelectorAll(
-    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
   );
 
   if (focusableElements.length === 0) {
@@ -54,8 +54,7 @@ export function trapFocus(container) {
  * @param {'polite'|'assertive'} priority - Announcement priority
  */
 export function announce(message, priority = 'polite') {
-  const announcer =
-    document.getElementById('sr-announcer') || createAnnouncer();
+  const announcer = document.getElementById('sr-announcer') || createAnnouncer();
   announcer.setAttribute('aria-live', priority);
   announcer.textContent = '';
 
@@ -86,11 +85,7 @@ function createAnnouncer() {
  * @param {string} itemSelector - CSS selector for items
  * @param {'horizontal'|'vertical'|'both'} direction - Navigation direction
  */
-export function enableArrowNavigation(
-  container,
-  itemSelector,
-  direction = 'vertical',
-) {
+export function enableArrowNavigation(container, itemSelector, direction = 'vertical') {
   const getItems = () => container.querySelectorAll(itemSelector);
 
   container.addEventListener('keydown', event => {
@@ -106,28 +101,16 @@ export function enableArrowNavigation(
 
     let newIndex = currentIndex;
 
-    if (
-      (direction === 'vertical' || direction === 'both') &&
-      event.key === 'ArrowDown'
-    ) {
+    if ((direction === 'vertical' || direction === 'both') && event.key === 'ArrowDown') {
       event.preventDefault();
       newIndex = (currentIndex + 1) % items.length;
-    } else if (
-      (direction === 'vertical' || direction === 'both') &&
-      event.key === 'ArrowUp'
-    ) {
+    } else if ((direction === 'vertical' || direction === 'both') && event.key === 'ArrowUp') {
       event.preventDefault();
       newIndex = (currentIndex - 1 + items.length) % items.length;
-    } else if (
-      (direction === 'horizontal' || direction === 'both') &&
-      event.key === 'ArrowRight'
-    ) {
+    } else if ((direction === 'horizontal' || direction === 'both') && event.key === 'ArrowRight') {
       event.preventDefault();
       newIndex = (currentIndex + 1) % items.length;
-    } else if (
-      (direction === 'horizontal' || direction === 'both') &&
-      event.key === 'ArrowLeft'
-    ) {
+    } else if ((direction === 'horizontal' || direction === 'both') && event.key === 'ArrowLeft') {
       event.preventDefault();
       newIndex = (currentIndex - 1 + items.length) % items.length;
     } else if (event.key === 'Home') {
@@ -277,7 +260,7 @@ export function checkContrastRatio(color1, color2) {
     const b = (rgb & 255) / 255;
 
     const [rs, gs, bs] = [r, g, b].map(c =>
-      c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4),
+      c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
     );
 
     return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;

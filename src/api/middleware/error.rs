@@ -78,7 +78,10 @@ impl IntoResponse for AppError {
                 ErrorResponse {
                     error: ErrorDetail {
                         code: "FILE_TOO_LARGE".to_string(),
-                        message: format!("Le fichier est trop volumineux (max: {} MB)", max / 1_000_000),
+                        message: format!(
+                            "Le fichier est trop volumineux (max: {} MB)",
+                            max / 1_000_000
+                        ),
                         details: Some(serde_json::json!({
                             "size_bytes": size,
                             "max_bytes": max

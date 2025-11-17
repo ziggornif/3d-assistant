@@ -1,6 +1,6 @@
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use rust_decimal::Decimal;
 
 /// Represents a printing material with pricing information
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -21,10 +21,10 @@ pub struct Material {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MaterialProperties {
-    pub density: Option<f64>,        // g/cm³
+    pub density: Option<f64>,           // g/cm³
     pub print_temperature: Option<i32>, // °C
     pub bed_temperature: Option<i32>,   // °C
-    pub strength: Option<String>,    // e.g., "high", "medium", "low"
+    pub strength: Option<String>,       // e.g., "high", "medium", "low"
     pub flexibility: Option<String>,
 }
 

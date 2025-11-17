@@ -37,11 +37,9 @@ impl Config {
             .parse()
             .unwrap_or(50);
 
-        let upload_dir =
-            std::env::var("UPLOAD_DIR").unwrap_or_else(|_| "./uploads".to_string());
+        let upload_dir = std::env::var("UPLOAD_DIR").unwrap_or_else(|_| "./uploads".to_string());
 
-        let static_dir =
-            std::env::var("STATIC_DIR").unwrap_or_else(|_| "./static".to_string());
+        let static_dir = std::env::var("STATIC_DIR").unwrap_or_else(|_| "./static".to_string());
 
         let template_dir =
             std::env::var("TEMPLATE_DIR").unwrap_or_else(|_| "./templates".to_string());

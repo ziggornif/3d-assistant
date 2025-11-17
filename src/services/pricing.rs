@@ -1,6 +1,6 @@
 // Pricing service for quote calculation
-use rust_decimal::Decimal;
 use rust_decimal::prelude::*;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 /// Base fee for all quotes (handling, setup, etc.)
@@ -42,10 +42,7 @@ pub fn calculate_model_price(volume_cm3: f64, price_per_cm3: f64) -> f64 {
 
 /// Generate full quote breakdown from items
 pub fn generate_quote_breakdown(items: Vec<QuoteItem>) -> QuoteBreakdown {
-    let subtotal: f64 = items
-        .iter()
-        .map(|item| item.material_cost)
-        .sum();
+    let subtotal: f64 = items.iter().map(|item| item.material_cost).sum();
 
     let subtotal_rounded = Decimal::from_f64_retain(subtotal)
         .unwrap_or_default()

@@ -7,12 +7,12 @@ use governor::{
     state::{InMemoryState, NotKeyed},
     Quota, RateLimiter,
 };
-use std::num::NonZeroU32;
-use std::sync::Arc;
-use tower::{Layer, Service};
-use std::task::{Context, Poll};
 use std::future::Future;
+use std::num::NonZeroU32;
 use std::pin::Pin;
+use std::sync::Arc;
+use std::task::{Context, Poll};
+use tower::{Layer, Service};
 
 /// Rate limiter configuration
 #[derive(Clone)]

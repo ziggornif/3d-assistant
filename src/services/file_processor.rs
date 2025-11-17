@@ -1,9 +1,9 @@
 use crate::api::middleware::AppError;
 use crate::models::quote::Dimensions;
-use std::io::{BufReader, Read};
-use std::path::Path;
 use quick_xml::events::Event;
 use quick_xml::reader::Reader as XmlReader;
+use std::io::{BufReader, Read};
+use std::path::Path;
 
 /// Result of processing a 3D model file
 #[derive(Debug)]
@@ -41,7 +41,8 @@ pub fn validate_file(bytes: &[u8], filename: &str, max_size: i64) -> Result<Stri
                 Ok("stl".to_string())
             } else {
                 // Binary STL - verify header and triangle count
-                let triangle_count = u32::from_le_bytes([bytes[80], bytes[81], bytes[82], bytes[83]]);
+                let triangle_count =
+                    u32::from_le_bytes([bytes[80], bytes[81], bytes[82], bytes[83]]);
                 let expected_size = 84 + (triangle_count as usize * 50);
 
                 if bytes.len() != expected_size {
@@ -89,7 +90,9 @@ pub fn process_stl_file(file_path: &str) -> Result<ProcessedModel, AppError> {
             let v0 = stl.vertices[face.vertices[0]];
             let v1 = stl.vertices[face.vertices[1]];
             let v2 = stl.vertices[face.vertices[2]];
-            [v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], v2[0], v2[1], v2[2]]
+            [
+                v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], v2[0], v2[1], v2[2],
+            ]
         })
         .collect();
 
@@ -130,21 +133,20 @@ pub fn process_3mf_file(file_path: &str) -> Result<ProcessedModel, AppError> {
 }
 
 /// Find and read the 3D model XML from a 3MF archive
-fn find_and_read_3mf_model(archive: &mut zip::ZipArchive<std::fs::File>) -> Result<String, AppError> {
+fn find_and_read_3mf_model(
+    archive: &mut zip::ZipArchive<std::fs::File>,
+) -> Result<String, AppError> {
     // Try common locations for the 3D model file
-    let possible_paths = vec![
-        "3D/3dmodel.model",
-        "3d/3dmodel.model",
-        "3D/3DModel.model",
-    ];
+    let possible_paths = vec!["3D/3dmodel.model", "3d/3dmodel.model", "3D/3DModel.model"];
 
     // First, try to get the main model file
     let mut main_model_content = None;
     for path in &possible_paths {
         if let Ok(mut file) = archive.by_name(path) {
             let mut contents = String::new();
-            file.read_to_string(&mut contents)
-                .map_err(|e| AppError::FileProcessing(format!("Erreur de lecture du modèle 3MF: {}", e)))?;
+            file.read_to_string(&mut contents).map_err(|e| {
+                AppError::FileProcessing(format!("Erreur de lecture du modèle 3MF: {}", e))
+            })?;
             main_model_content = Some(contents);
             break;
         }
@@ -180,8 +182,9 @@ fn find_and_read_3mf_model(archive: &mut zip::ZipArchive<std::fs::File>) -> Resu
     let mut largest_size = 0;
 
     for i in 0..archive.len() {
-        let file = archive.by_index(i)
-            .map_err(|e| AppError::FileProcessing(format!("Erreur d'accès au fichier ZIP: {}", e)))?;
+        let file = archive.by_index(i).map_err(|e| {
+            AppError::FileProcessing(format!("Erreur d'accès au fichier ZIP: {}", e))
+        })?;
         if file.name().ends_with(".model") && file.size() > largest_size {
             largest_size = file.size();
             largest_model = Some(i);
@@ -191,8 +194,9 @@ fn find_and_read_3mf_model(archive: &mut zip::ZipArchive<std::fs::File>) -> Resu
     if let Some(idx) = largest_model {
         let mut file = archive.by_index(idx).unwrap();
         let mut contents = String::new();
-        file.read_to_string(&mut contents)
-            .map_err(|e| AppError::FileProcessing(format!("Erreur de lecture du modèle 3MF: {}", e)))?;
+        file.read_to_string(&mut contents).map_err(|e| {
+            AppError::FileProcessing(format!("Erreur de lecture du modèle 3MF: {}", e))
+        })?;
         return Ok(contents);
     }
 
@@ -279,22 +283,26 @@ fn parse_3mf_mesh(xml_content: &str) -> Result<Vec<[f32; 9]>, AppError> {
 
                         if v1 < vertices.len() && v2 < vertices.len() && v3 < vertices.len() {
                             triangles.push([
-                                vertices[v1][0], vertices[v1][1], vertices[v1][2],
-                                vertices[v2][0], vertices[v2][1], vertices[v2][2],
-                                vertices[v3][0], vertices[v3][1], vertices[v3][2],
+                                vertices[v1][0],
+                                vertices[v1][1],
+                                vertices[v1][2],
+                                vertices[v2][0],
+                                vertices[v2][1],
+                                vertices[v2][2],
+                                vertices[v3][0],
+                                vertices[v3][1],
+                                vertices[v3][2],
                             ]);
                         }
                     }
                     _ => {}
                 }
             }
-            Ok(Event::End(ref e)) => {
-                match e.local_name().as_ref() {
-                    b"vertices" => in_vertices = false,
-                    b"triangles" => in_triangles = false,
-                    _ => {}
-                }
-            }
+            Ok(Event::End(ref e)) => match e.local_name().as_ref() {
+                b"vertices" => in_vertices = false,
+                b"triangles" => in_triangles = false,
+                _ => {}
+            },
             Ok(Event::Eof) => break,
             Err(e) => {
                 return Err(AppError::FileProcessing(format!(
@@ -410,7 +418,11 @@ mod tests {
         let volume = calculate_volume(&triangles);
 
         // Allow for floating point precision
-        assert!((volume - 1.0).abs() < 0.01, "Expected ~1.0 cm³, got {}", volume);
+        assert!(
+            (volume - 1.0).abs() < 0.01,
+            "Expected ~1.0 cm³, got {}",
+            volume
+        );
     }
 
     #[test]

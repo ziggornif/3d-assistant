@@ -1,18 +1,18 @@
 use axum::{
-    routing::{get, post, patch, delete},
-    Router,
     extract::DefaultBodyLimit,
     middleware,
+    routing::{delete, get, patch, post},
+    Router,
 };
 use std::sync::Arc;
-use tower_http::cors::{CorsLayer, Any};
-use tower_http::trace::TraceLayer;
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
+use tower_http::trace::TraceLayer;
 
-use crate::api::handlers::{upload, quote, materials, admin, ssr};
+use crate::api::handlers::{admin, materials, quote, ssr, upload};
 use crate::api::middleware::{admin_auth, create_rate_limiter};
-use crate::db::DbPool;
 use crate::config::Config;
+use crate::db::DbPool;
 
 /// Application state shared across handlers
 #[derive(Clone)]

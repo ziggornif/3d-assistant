@@ -1,6 +1,6 @@
-use sqlx::{Pool, Sqlite, sqlite::SqlitePoolOptions};
-use std::path::Path;
 use anyhow::Result;
+use sqlx::{sqlite::SqlitePoolOptions, Pool, Sqlite};
+use std::path::Path;
 
 pub mod schema;
 
@@ -36,7 +36,12 @@ pub async fn run_migrations(pool: &DbPool) -> Result<()> {
 
     let mut entries: Vec<_> = std::fs::read_dir(migrations_dir)?
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map(|ext| ext == "sql").unwrap_or(false))
+        .filter(|e| {
+            e.path()
+                .extension()
+                .map(|ext| ext == "sql")
+                .unwrap_or(false)
+        })
         .collect();
 
     entries.sort_by_key(|e| e.path());
