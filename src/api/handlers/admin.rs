@@ -8,18 +8,9 @@ use ulid::Ulid;
 
 use crate::api::middleware::{AppError, AppResult};
 use crate::api::routes::AppState;
+use crate::business::{CleanupResult, SessionService};
 use crate::models::material::Material;
-
-// Type alias for pricing history query result to avoid clippy::type_complexity
-pub type PricingHistoryRow = (
-    String,
-    String,
-    Option<f64>,
-    f64,
-    Option<String>,
-    String,
-    String,
-);
+use crate::persistence;
 
 #[derive(Serialize)]
 pub struct AdminMaterialResponse {
@@ -56,16 +47,7 @@ impl From<Material> for AdminMaterialResponse {
 pub async fn list_materials(
     State(state): State<AppState>,
 ) -> AppResult<Json<Vec<AdminMaterialResponse>>> {
-    let materials: Vec<Material> = sqlx::query_as(
-        r#"
-        SELECT id, service_type_id, name, description, price_per_cm3,
-               color, properties, active, created_at, updated_at
-        FROM materials
-        ORDER BY name
-        "#,
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let materials = persistence::materials::list_all(&state.pool).await?;
 
     let responses: Vec<AdminMaterialResponse> = materials.into_iter().map(Into::into).collect();
     tracing::info!("Admin listed {} materials", responses.len());
@@ -94,22 +76,29 @@ pub async fn create_material(
         .as_ref()
         .map(|p| serde_json::to_string(p).unwrap_or_default());
 
-    sqlx::query(
-        r#"INSERT INTO materials (id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9)"#,
+    let material = persistence::materials::create(
+        &state.pool,
+        &id,
+        &body.service_type_id,
+        &body.name,
+        body.description.as_deref(),
+        body.price_per_cm3,
+        body.color.as_deref(),
+        properties_json.as_deref(),
     )
-    .bind(&id).bind(&body.service_type_id).bind(&body.name).bind(&body.description)
-    .bind(body.price_per_cm3).bind(&body.color).bind(&properties_json).bind(now).bind(now)
-    .execute(&state.pool).await?;
+    .await?;
 
     let history_id = Ulid::new().to_string();
-    sqlx::query(r#"INSERT INTO pricing_history (id, material_id, old_price, new_price, changed_by, changed_at) VALUES ($1, $2, NULL, $3, $4, $5)"#)
-        .bind(&history_id).bind(&id).bind(body.price_per_cm3).bind("admin").bind(now)
-        .execute(&state.pool).await?;
-
-    let material: Material = sqlx::query_as(
-        r#"SELECT id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at FROM materials WHERE id = $1"#,
-    ).bind(&id).fetch_one(&state.pool).await?;
+    persistence::admin::create_pricing_history(
+        &state.pool,
+        &history_id,
+        &id,
+        None,
+        body.price_per_cm3,
+        "admin",
+        now,
+    )
+    .await?;
 
     tracing::info!("Admin created material: {} ({})", body.name, id);
     Ok(Json(material.into()))
@@ -131,20 +120,25 @@ pub async fn update_material(
     Path(id): Path<String>,
     Json(body): Json<UpdateMaterialRequest>,
 ) -> AppResult<Json<AdminMaterialResponse>> {
-    let current: Option<Material> = sqlx::query_as(
-        r#"SELECT id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at FROM materials WHERE id = $1"#,
-    ).bind(&id).fetch_optional(&state.pool).await?;
-
-    let current = current.ok_or_else(|| AppError::MaterialNotFound(id.clone()))?;
+    let current = persistence::materials::find_by_id(&state.pool, &id)
+        .await?
+        .ok_or_else(|| AppError::MaterialNotFound(id.clone()))?;
     let now = Utc::now().naive_utc();
 
     if let Some(new_price) = body.price_per_cm3
         && (new_price - current.price_per_cm3).abs() > f64::EPSILON
     {
         let history_id = Ulid::new().to_string();
-        sqlx::query(r#"INSERT INTO pricing_history (id, material_id, old_price, new_price, changed_by, changed_at) VALUES ($1, $2, $3, $4, $5, $6)"#)
-            .bind(&history_id).bind(&id).bind(current.price_per_cm3).bind(new_price).bind("admin").bind(now)
-            .execute(&state.pool).await?;
+        persistence::admin::create_pricing_history(
+            &state.pool,
+            &history_id,
+            &id,
+            Some(current.price_per_cm3),
+            new_price,
+            "admin",
+            now,
+        )
+        .await?;
         tracing::info!(
             "Price changed for material {}: {}€ -> {}€",
             id,
@@ -153,27 +147,34 @@ pub async fn update_material(
         );
     }
 
-    let name = body.name.unwrap_or(current.name);
-    let description = body.description.or(current.description);
-    let price_per_cm3 = body.price_per_cm3.unwrap_or(current.price_per_cm3);
-    let color = body.color.or(current.color);
+    let name = body.name.as_deref().or(Some(current.name.as_str()));
+    let description = body
+        .description
+        .as_deref()
+        .or(current.description.as_deref());
+    let price_per_cm3 = body.price_per_cm3.or(Some(current.price_per_cm3));
+    let color = body.color.as_deref().or(current.color.as_deref());
     // Convert current properties from String to Value if needed
     let current_properties_value = current
         .properties
         .and_then(|s| serde_json::from_str(&s).ok());
     let properties = body.properties.or(current_properties_value);
-    let active = body.active.unwrap_or(current.active);
+    let active = body.active.or(Some(current.active));
     let properties_json = properties
         .as_ref()
         .map(|p| serde_json::to_string(p).unwrap_or_default());
 
-    sqlx::query(r#"UPDATE materials SET name = $1, description = $2, price_per_cm3 = $3, color = $4, properties = $5, active = $6, updated_at = $7 WHERE id = $8"#)
-        .bind(&name).bind(&description).bind(price_per_cm3).bind(&color).bind(&properties_json).bind(active).bind(now).bind(&id)
-        .execute(&state.pool).await?;
-
-    let updated: Material = sqlx::query_as(
-        r#"SELECT id, service_type_id, name, description, price_per_cm3, color, properties, active, created_at, updated_at FROM materials WHERE id = $1"#,
-    ).bind(&id).fetch_one(&state.pool).await?;
+    let updated = persistence::materials::update(
+        &state.pool,
+        &id,
+        name,
+        description,
+        price_per_cm3,
+        color,
+        properties_json.as_deref(),
+        active,
+    )
+    .await?;
 
     tracing::info!("Admin updated material: {}", id);
     Ok(Json(updated.into()))
@@ -194,12 +195,7 @@ pub struct PricingHistoryEntry {
 pub async fn get_pricing_history(
     State(state): State<AppState>,
 ) -> AppResult<Json<Vec<PricingHistoryEntry>>> {
-    let entries: Vec<PricingHistoryRow> = sqlx::query_as(
-        r#"SELECT ph.id, ph.material_id, ph.old_price, ph.new_price, ph.changed_by, ph.changed_at, m.name
-        FROM pricing_history ph JOIN materials m ON ph.material_id = m.id ORDER BY ph.changed_at DESC LIMIT 100"#,
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let entries = persistence::admin::get_pricing_history(&state.pool).await?;
 
     let history: Vec<PricingHistoryEntry> = entries
         .into_iter()
@@ -225,9 +221,8 @@ pub async fn get_pricing_history(
 /// Cleanup expired sessions and their associated files
 pub async fn cleanup_expired_sessions(
     State(state): State<AppState>,
-) -> AppResult<Json<crate::services::CleanupResult>> {
-    let session_service =
-        crate::services::SessionService::new(state.pool.clone(), &state.config.upload_dir);
+) -> AppResult<Json<CleanupResult>> {
+    let session_service = SessionService::new(state.pool.clone(), &state.config.upload_dir);
 
     let result = session_service
         .cleanup_expired()

@@ -1,6 +1,7 @@
 use crate::api::middleware::AppError;
 use crate::db::DbPool;
 use crate::models::QuoteSession;
+use crate::persistence;
 use anyhow::Result;
 use chrono::Utc;
 use std::path::{Path, PathBuf};
@@ -31,17 +32,13 @@ impl SessionService {
     pub async fn create_session(&self) -> Result<QuoteSession, AppError> {
         let session = QuoteSession::new();
 
-        sqlx::query(
-            r#"
-            INSERT INTO quote_sessions (id, created_at, expires_at, status)
-            VALUES ($1, $2, $3, $4)
-            "#,
+        persistence::sessions::create(
+            &self.pool,
+            &session.id,
+            session.created_at,
+            session.expires_at,
+            &session.status,
         )
-        .bind(&session.id)
-        .bind(session.created_at)
-        .bind(session.expires_at)
-        .bind(&session.status)
-        .execute(&self.pool)
         .await?;
 
         Ok(session)
@@ -49,17 +46,9 @@ impl SessionService {
 
     /// Get session by ID
     pub async fn get_session(&self, session_id: &str) -> Result<QuoteSession, AppError> {
-        let session: QuoteSession = sqlx::query_as(
-            r#"
-            SELECT id, created_at, expires_at, status
-            FROM quote_sessions
-            WHERE id = $1
-            "#,
-        )
-        .bind(session_id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or_else(|| AppError::SessionNotFound(session_id.to_string()))?;
+        let session = persistence::sessions::find_by_id(&self.pool, session_id)
+            .await?
+            .ok_or_else(|| AppError::SessionNotFound(session_id.to_string()))?;
 
         if session.is_expired() {
             return Err(AppError::SessionExpired(session_id.to_string()));
@@ -71,18 +60,7 @@ impl SessionService {
     /// Update session status
     #[allow(dead_code)]
     pub async fn update_status(&self, session_id: &str, status: &str) -> Result<(), AppError> {
-        sqlx::query(
-            r#"
-            UPDATE quote_sessions
-            SET status = $1
-            WHERE id = $2
-            "#,
-        )
-        .bind(status)
-        .bind(session_id)
-        .execute(&self.pool)
-        .await?;
-
+        persistence::sessions::update_status(&self.pool, session_id, status).await?;
         Ok(())
     }
 
@@ -94,20 +72,13 @@ impl SessionService {
             errors: Vec::new(),
         };
 
-        // First, get the list of expired session IDs
         let now = Utc::now().naive_utc();
-        let expired_sessions: Vec<(String,)> = sqlx::query_as(
-            r#"
-            SELECT id FROM quote_sessions
-            WHERE expires_at < $1
-            "#,
-        )
-        .bind(now)
-        .fetch_all(&self.pool)
-        .await?;
+
+        // Get list of expired session IDs
+        let expired_sessions = persistence::sessions::find_expired_ids(&self.pool, now).await?;
 
         // Delete upload directories for each expired session
-        for (session_id,) in &expired_sessions {
+        for session_id in &expired_sessions {
             let session_upload_dir = self.upload_dir.join(session_id);
             if session_upload_dir.exists() {
                 match std::fs::remove_dir_all(&session_upload_dir) {
@@ -127,46 +98,10 @@ impl SessionService {
             }
         }
 
-        // Delete uploaded_models records for expired sessions
-        sqlx::query(
-            r#"
-            DELETE FROM uploaded_models
-            WHERE session_id IN (
-                SELECT id FROM quote_sessions
-                WHERE expires_at < $1
-            )
-            "#,
-        )
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
-
-        // Delete quotes for expired sessions
-        sqlx::query(
-            r#"
-            DELETE FROM quotes
-            WHERE session_id IN (
-                SELECT id FROM quote_sessions
-                WHERE expires_at < $1
-            )
-            "#,
-        )
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
-
-        // Finally, delete the expired sessions themselves
-        let delete_result = sqlx::query(
-            r#"
-            DELETE FROM quote_sessions
-            WHERE expires_at < $1
-            "#,
-        )
-        .bind(now)
-        .execute(&self.pool)
-        .await?;
-
-        result.sessions_deleted = delete_result.rows_affected();
+        // Delete data in correct order (foreign key constraints)
+        persistence::models::delete_by_expired_sessions(&self.pool, now).await?;
+        persistence::quotes::delete_by_expired_sessions(&self.pool, now).await?;
+        result.sessions_deleted = persistence::sessions::delete_expired(&self.pool, now).await?;
 
         tracing::info!(
             "Cleanup completed: {} sessions deleted, {} directories removed, {} errors",
@@ -182,16 +117,8 @@ impl SessionService {
     #[allow(dead_code)]
     pub async fn count_expired(&self) -> Result<i64> {
         let now = Utc::now().naive_utc();
-        let count: (i64,) = sqlx::query_as(
-            r#"
-            SELECT COUNT(*) FROM quote_sessions
-            WHERE expires_at < $1
-            "#,
-        )
-        .bind(now)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(count.0)
+        persistence::sessions::count_expired(&self.pool, now)
+            .await
+            .map_err(Into::into)
     }
 }

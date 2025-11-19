@@ -6,11 +6,12 @@ use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use serde::Deserialize;
 use tera::Context;
 
-use crate::api::handlers::admin::{AdminMaterialResponse, PricingHistoryEntry, PricingHistoryRow};
+use crate::api::handlers::admin::{AdminMaterialResponse, PricingHistoryEntry};
 use crate::api::middleware::AppError;
 use crate::api::routes::AppState;
-use crate::models::{QuoteSession, material::Material};
-use crate::services::render_template;
+use crate::business::render_template;
+use crate::models::QuoteSession;
+use crate::persistence;
 
 /// Render the main index page with SSR data
 pub async fn index_page(State(state): State<AppState>) -> Result<Html<String>, AppError> {
@@ -23,31 +24,17 @@ pub async fn index_page(State(state): State<AppState>) -> Result<Html<String>, A
         &session.expires_at,
         &session.status
     );
-    sqlx::query(
-        r#"
-        INSERT INTO quote_sessions (id, created_at, expires_at, status)
-        VALUES ($1, $2, $3, $4)
-        "#,
+    persistence::sessions::create(
+        &state.pool,
+        &session.id,
+        session.created_at,
+        session.expires_at,
+        &session.status,
     )
-    .bind(&session.id)
-    .bind(session.created_at)
-    .bind(session.expires_at)
-    .bind(&session.status)
-    .execute(&state.pool)
     .await?;
 
     // Fetch active materials
-    let materials: Vec<Material> = sqlx::query_as(
-        r#"
-        SELECT id, service_type_id, name, description, price_per_cm3,
-               color, properties, active, created_at, updated_at
-        FROM materials
-        WHERE active = true
-        ORDER BY name
-        "#,
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let materials = persistence::materials::list_all_active(&state.pool).await?;
 
     // Serialize materials to JSON for embedding in HTML
     let materials_json = serde_json::to_string(&materials)
@@ -85,16 +72,7 @@ pub async fn admin_page(
 
     if is_authenticated {
         // Fetch all materials (admin view)
-        let materials: Vec<Material> = sqlx::query_as(
-            r#"
-            SELECT id, service_type_id, name, description, price_per_cm3,
-                   color, properties, active, created_at, updated_at
-            FROM materials
-            ORDER BY name
-            "#,
-        )
-        .fetch_all(&state.pool)
-        .await?;
+        let materials = persistence::materials::list_all(&state.pool).await?;
 
         let admin_materials: Vec<AdminMaterialResponse> =
             materials.into_iter().map(Into::into).collect();
@@ -102,12 +80,7 @@ pub async fn admin_page(
             .map_err(|e| AppError::Internal(format!("Failed to serialize materials: {}", e)))?;
 
         // Fetch pricing history
-        let entries: Vec<PricingHistoryRow> = sqlx::query_as(
-            r#"SELECT ph.id, ph.material_id, ph.old_price, ph.new_price, ph.changed_by, ph.changed_at, m.name
-            FROM pricing_history ph JOIN materials m ON ph.material_id = m.id ORDER BY ph.changed_at DESC LIMIT 100"#,
-        )
-        .fetch_all(&state.pool)
-        .await?;
+        let entries = persistence::admin::get_pricing_history(&state.pool).await?;
 
         let pricing_history: Vec<PricingHistoryEntry> = entries
             .into_iter()

@@ -1,8 +1,10 @@
 mod api;
+mod business;
 mod config;
 mod db;
+mod integrations;
 mod models;
-mod services;
+mod persistence;
 
 use anyhow::Result;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -29,7 +31,7 @@ async fn main() -> Result<()> {
     tracing::info!("Upload directory: {}", config.upload_dir);
 
     // Initialize templates for SSR
-    services::init_templates(&config.template_dir).expect("Failed to load templates");
+    business::init_templates(&config.template_dir).expect("Failed to load templates");
     tracing::info!("Templates loaded from: {}", config.template_dir);
 
     // Initialize database

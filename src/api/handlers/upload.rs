@@ -7,10 +7,13 @@ use chrono::NaiveDateTime;
 use serde::Serialize;
 use std::path::PathBuf;
 
-use crate::api::middleware::{AppError, AppResult, sanitize_filename};
-use crate::api::routes::AppState;
+use crate::business::{SessionService, file_processor};
 use crate::models::quote::UploadedModel;
-use crate::services::{SessionService, file_processor};
+use crate::{
+    api::middleware::{AppError, AppResult, sanitize_filename},
+    persistence::models::create,
+};
+use crate::{api::routes::AppState, persistence::models};
 
 #[derive(Serialize)]
 pub struct CreateSessionResponse {
@@ -194,26 +197,21 @@ pub async fn upload_model(
     model.set_support_analysis(processed.support_analysis.clone());
 
     // Save to database
-    sqlx::query(
-        r#"
-        INSERT INTO uploaded_models
-        (id, session_id, filename, file_format, file_size_bytes, volume_cm3, dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-        "#,
+    create(
+        &state.pool,
+        &model.id,
+        &model.session_id,
+        &model.filename,
+        &model.file_format,
+        model.file_size_bytes,
+        model.volume_cm3,
+        model.dimensions_mm.as_deref(),
+        model.triangle_count,
+        model.material_id.as_deref(),
+        &model.file_path,
+        model.created_at,
+        model.support_analysis.as_deref(),
     )
-    .bind(&model.id)
-    .bind(&model.session_id)
-    .bind(&model.filename)
-    .bind(&model.file_format)
-    .bind(model.file_size_bytes)
-    .bind(model.volume_cm3)
-    .bind(&model.dimensions_mm)
-    .bind(model.triangle_count)
-    .bind(&model.material_id)
-    .bind(&model.file_path)
-    .bind(model.created_at)
-    .bind(&model.support_analysis)
-    .execute(&state.pool)
     .await?;
 
     tracing::info!(
@@ -256,18 +254,7 @@ pub async fn delete_model(
     session_service.get_session(&session_id).await?;
 
     // Get model to find file path
-    let model: Option<UploadedModel> = sqlx::query_as(
-        r#"
-        SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
-        FROM uploaded_models
-        WHERE id = $1 AND session_id = $2
-        "#,
-    )
-    .bind(&model_id)
-    .bind(&session_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let model = models::find_by_id_and_session(&state.pool, &model_id, &session_id).await?;
 
     let model = model.ok_or_else(|| AppError::ModelNotFound(model_id.clone()))?;
 
@@ -277,10 +264,7 @@ pub async fn delete_model(
     }
 
     // Delete from database
-    sqlx::query("DELETE FROM uploaded_models WHERE id = $1")
-        .bind(&model_id)
-        .execute(&state.pool)
-        .await?;
+    models::delete(&state.pool, &model_id).await?;
 
     tracing::info!("Deleted model {} from session {}", model_id, session_id);
 

@@ -5,11 +5,14 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-use crate::api::middleware::{AppError, AppResult};
 use crate::api::routes::AppState;
-use crate::models::material::Material;
-use crate::models::quote::UploadedModel;
-use crate::services::SessionService;
+use crate::business::SessionService;
+use crate::{
+    api::middleware::{AppError, AppResult},
+    persistence::materials,
+    persistence::models,
+    persistence::quotes,
+};
 
 #[derive(Deserialize)]
 pub struct ConfigureModelRequest {
@@ -34,42 +37,17 @@ pub async fn configure_model(
     session_service.get_session(&session_id).await?;
 
     // Fetch the model
-    let model: Option<UploadedModel> = sqlx::query_as(
-        r#"
-        SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
-        FROM uploaded_models
-        WHERE id = $1 AND session_id = $2
-        "#,
-    )
-    .bind(&model_id)
-    .bind(&session_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let model = models::find_by_id_and_session(&state.pool, &model_id, &session_id).await?;
 
     let model = model.ok_or_else(|| AppError::ModelNotFound(model_id.clone()))?;
 
     // Fetch the material
-    let material: Option<Material> = sqlx::query_as(
-        r#"
-        SELECT id, service_type_id, name, description, price_per_cm3,
-               color, properties, active, created_at, updated_at
-        FROM materials
-        WHERE id = $1 AND active = true
-        "#,
-    )
-    .bind(&body.material_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let material = materials::find_by_id(&state.pool, &body.material_id).await?;
 
     let material = material.ok_or_else(|| AppError::MaterialNotFound(body.material_id.clone()))?;
 
     // Update model with material_id
-    sqlx::query("UPDATE uploaded_models SET material_id = $1 WHERE id = $2")
-        .bind(&body.material_id)
-        .bind(&model_id)
-        .execute(&state.pool)
-        .await?;
+    models::update_material(&state.pool, &model_id, &body.material_id).await?;
 
     // Calculate estimated price
     let volume = model.volume_cm3.unwrap_or(0.0);
@@ -121,18 +99,7 @@ pub async fn generate_quote(
     session_service.get_session(&session_id).await?;
 
     // Get all models with their materials
-    let models: Vec<UploadedModel> = sqlx::query_as(
-        r#"
-        SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
-        FROM uploaded_models
-        WHERE session_id = $1
-        "#,
-    )
-    .bind(&session_id)
-    .fetch_all(&state.pool)
-    .await?;
-
+    let models = models::find_by_session(&state.pool, &session_id).await?;
     if models.is_empty() {
         return Err(AppError::Internal("No models in session".to_string()));
     }
@@ -144,45 +111,38 @@ pub async fn generate_quote(
             AppError::Internal(format!("Model {} has no material assigned", model.id))
         })?;
 
-        let material: Material = sqlx::query_as(
-            r#"
-            SELECT id, service_type_id, name, description, price_per_cm3,
-                   color, properties, active, created_at, updated_at
-            FROM materials
-            WHERE id = $1
-            "#,
-        )
-        .bind(material_id)
-        .fetch_one(&state.pool)
-        .await?;
+        let material = materials::find_by_id(&state.pool, material_id).await?;
+        if let Some(material) = material {
+            let base_volume = model.volume_cm3.unwrap_or(0.0);
 
-        let base_volume = model.volume_cm3.unwrap_or(0.0);
+            // Calculate support volume based on support analysis
+            let support_percentage = model
+                .get_support_analysis()
+                .map(|s| s.estimated_support_material_percentage as f64)
+                .unwrap_or(0.0);
 
-        // Calculate support volume based on support analysis
-        let support_percentage = model
-            .get_support_analysis()
-            .map(|s| s.estimated_support_material_percentage as f64)
-            .unwrap_or(0.0);
+            let support_volume = base_volume * (support_percentage / 100.0);
+            let total_volume = base_volume + support_volume;
 
-        let support_volume = base_volume * (support_percentage / 100.0);
-        let total_volume = base_volume + support_volume;
+            let material_cost = crate::business::pricing::calculate_model_price(
+                total_volume,
+                material.price_per_cm3,
+            );
 
-        let material_cost =
-            crate::services::pricing::calculate_model_price(total_volume, material.price_per_cm3);
-
-        items.push(crate::services::pricing::QuoteItem {
-            model_id: model.id.clone(),
-            model_name: model.filename.clone(),
-            material_id: material.id.clone(),
-            material_name: material.name.clone(),
-            volume_cm3: total_volume,
-            price_per_cm3: material.price_per_cm3,
-            material_cost,
-        });
+            items.push(crate::business::pricing::QuoteItem {
+                model_id: model.id.clone(),
+                model_name: model.filename.clone(),
+                material_id: material.id.clone(),
+                material_name: material.name.clone(),
+                volume_cm3: total_volume,
+                price_per_cm3: material.price_per_cm3,
+                material_cost,
+            });
+        }
     }
 
     // Generate breakdown
-    let breakdown = crate::services::pricing::generate_quote_breakdown(items.clone());
+    let breakdown = crate::business::pricing::generate_quote_breakdown(items.clone());
 
     // Create quote record
     let quote_id = Ulid::new().to_string();
@@ -190,19 +150,15 @@ pub async fn generate_quote(
     let breakdown_json = serde_json::to_string(&breakdown)
         .map_err(|e| AppError::Internal(format!("JSON serialization error: {}", e)))?;
 
-    sqlx::query(
-        r#"
-        INSERT INTO quotes (id, session_id, total_price, breakdown, status, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        "#,
+    quotes::create(
+        &state.pool,
+        &quote_id,
+        &session_id,
+        breakdown.total,
+        &breakdown_json,
+        "generated",
+        now,
     )
-    .bind(&quote_id)
-    .bind(&session_id)
-    .bind(breakdown.total)
-    .bind(&breakdown_json)
-    .bind("generated")
-    .bind(now)
-    .execute(&state.pool)
     .await?;
 
     let response_items: Vec<QuoteItemResponse> = items
@@ -251,33 +207,13 @@ pub async fn get_current_quote(
     session_service.get_session(&session_id).await?;
 
     // Get all models with their materials
-    let models: Vec<UploadedModel> = sqlx::query_as(
-        r#"
-        SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
-        FROM uploaded_models
-        WHERE session_id = $1
-        "#,
-    )
-    .bind(&session_id)
-    .fetch_all(&state.pool)
-    .await?;
+    let models = models::find_by_session(&state.pool, &session_id).await?;
 
     // Build quote items (only for models with materials assigned)
     let mut items = Vec::new();
     for model in &models {
         if let Some(material_id) = &model.material_id {
-            let material: Option<Material> = sqlx::query_as(
-                r#"
-                SELECT id, service_type_id, name, description, price_per_cm3,
-                       color, properties, active, created_at, updated_at
-                FROM materials
-                WHERE id = $1
-                "#,
-            )
-            .bind(material_id)
-            .fetch_optional(&state.pool)
-            .await?;
+            let material = materials::find_by_id(&state.pool, material_id).await?;
 
             if let Some(material) = material {
                 let base_volume = model.volume_cm3.unwrap_or(0.0);
@@ -291,12 +227,12 @@ pub async fn get_current_quote(
                 let support_volume = base_volume * (support_percentage / 100.0);
                 let total_volume = base_volume + support_volume;
 
-                let material_cost = crate::services::pricing::calculate_model_price(
+                let material_cost = crate::business::pricing::calculate_model_price(
                     total_volume,
                     material.price_per_cm3,
                 );
 
-                items.push(crate::services::pricing::QuoteItem {
+                items.push(crate::business::pricing::QuoteItem {
                     model_id: model.id.clone(),
                     model_name: model.filename.clone(),
                     material_id: material.id.clone(),
@@ -310,7 +246,7 @@ pub async fn get_current_quote(
     }
 
     // Generate breakdown
-    let breakdown = crate::services::pricing::generate_quote_breakdown(items.clone());
+    let breakdown = crate::business::pricing::generate_quote_breakdown(items.clone());
 
     let response_items: Vec<QuoteItemResponse> = items
         .iter()

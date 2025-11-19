@@ -103,13 +103,13 @@ impl UploadedModel {
     /// Set support analysis data
     pub fn set_support_analysis(
         &mut self,
-        analysis: crate::services::file_processor::SupportAnalysis,
+        analysis: crate::business::file_processor::SupportAnalysis,
     ) {
         self.support_analysis = Some(serde_json::to_string(&analysis).unwrap_or_default());
     }
 
     /// Get support analysis data
-    pub fn get_support_analysis(&self) -> Option<crate::services::file_processor::SupportAnalysis> {
+    pub fn get_support_analysis(&self) -> Option<crate::business::file_processor::SupportAnalysis> {
         self.support_analysis
             .as_ref()
             .and_then(|s| serde_json::from_str(s).ok())

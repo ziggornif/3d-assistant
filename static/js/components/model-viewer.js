@@ -272,7 +272,7 @@ class ModelViewer extends HTMLElement {
     // Add controls hint
     const hint = document.createElement('div');
     hint.className = 'controls-hint';
-    hint.textContent = 'Clic + glisser: Rotation | Molette: Zoom | Clic droit: Pan';
+    hint.textContent = 'Clic + glisser: Rotation | Molette: Zoom | Clic droit: Déplacer';
     container.appendChild(hint);
 
     // Handle resize
