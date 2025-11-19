@@ -18,6 +18,28 @@ pub struct Material {
     pub updated_at: NaiveDateTime,
 }
 
+#[derive(Debug, Clone)]
+pub struct CreateMaterial<'a> {
+    pub id: &'a str,
+    pub service_type_id: &'a str,
+    pub name: &'a str,
+    pub description: Option<&'a str>,
+    pub price_per_cm3: f64,
+    pub color: Option<&'a str>,
+    pub properties: Option<&'a str>,
+}
+
+#[derive(Debug, Clone)]
+pub struct UpdateMaterial<'a> {
+    pub id: &'a str,
+    pub name: Option<&'a str>,
+    pub description: Option<&'a str>,
+    pub price_per_cm3: Option<f64>,
+    pub color: Option<&'a str>,
+    pub properties: Option<&'a str>,
+    pub active: Option<bool>,
+}
+
 /// Material properties stored as JSON
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]

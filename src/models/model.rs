@@ -1,0 +1,15 @@
+pub struct CreateModel<'a> {
+    pub id: &'a str,
+    pub session_id: &'a str,
+    pub filename: &'a str,
+    pub file_format: &'a str,
+    pub file_size_bytes: i64,
+    pub volume_cm3: Option<f64>,
+    pub dimensions_mm: Option<&'a str>,
+    pub triangle_count: Option<i64>,
+    pub material_id: Option<&'a str>,
+    pub file_path: &'a str,
+    pub preview_url: &'a str,
+    pub created_at: chrono::NaiveDateTime,
+    pub support_analysis: Option<&'a str>,
+}

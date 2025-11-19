@@ -6,11 +6,14 @@ use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
 
-use crate::api::middleware::{AppError, AppResult};
-use crate::api::routes::AppState;
 use crate::business::{CleanupResult, SessionService};
 use crate::models::material::Material;
 use crate::persistence;
+use crate::{
+    api::middleware::{AppError, AppResult},
+    models::material::CreateMaterial,
+};
+use crate::{api::routes::AppState, models::material::UpdateMaterial};
 
 #[derive(Serialize)]
 pub struct AdminMaterialResponse {
@@ -78,13 +81,15 @@ pub async fn create_material(
 
     let material = persistence::materials::create(
         &state.pool,
-        &id,
-        &body.service_type_id,
-        &body.name,
-        body.description.as_deref(),
-        body.price_per_cm3,
-        body.color.as_deref(),
-        properties_json.as_deref(),
+        CreateMaterial {
+            id: &id,
+            service_type_id: &body.service_type_id,
+            name: &body.name,
+            description: body.description.as_deref(),
+            price_per_cm3: body.price_per_cm3,
+            color: body.color.as_deref(),
+            properties: properties_json.as_deref(),
+        },
     )
     .await?;
 
@@ -166,13 +171,15 @@ pub async fn update_material(
 
     let updated = persistence::materials::update(
         &state.pool,
-        &id,
-        name,
-        description,
-        price_per_cm3,
-        color,
-        properties_json.as_deref(),
-        active,
+        UpdateMaterial {
+            id: &id,
+            name,
+            description,
+            price_per_cm3,
+            color,
+            properties: properties_json.as_deref(),
+            active,
+        },
     )
     .await?;
 

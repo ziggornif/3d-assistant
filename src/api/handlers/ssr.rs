@@ -14,7 +14,6 @@ use crate::models::QuoteSession;
 use crate::persistence;
 
 /// Render the main index page with SSR data
-
 pub async fn index_page(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -23,10 +22,10 @@ pub async fn index_page(
     let mut session_id_to_set: Option<String> = None;
     if let Some(cookie) = jar.get("session_id") {
         let sid = cookie.value();
-        if let Ok(Some(db_session)) = persistence::sessions::find_by_id(&state.pool, sid).await {
-            if db_session.expires_at > chrono::Utc::now().naive_utc() {
-                session = Some(db_session);
-            }
+        if let Ok(Some(db_session)) = persistence::sessions::find_by_id(&state.pool, sid).await
+            && db_session.expires_at > chrono::Utc::now().naive_utc()
+        {
+            session = Some(db_session);
         }
     }
 

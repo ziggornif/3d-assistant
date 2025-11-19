@@ -1,24 +1,9 @@
-use crate::models::quote::UploadedModel;
+use crate::models::{model::CreateModel, quote::UploadedModel};
 use chrono::NaiveDateTime;
 use sqlx::PgPool;
 
 /// Create a new uploaded model
-pub async fn create(
-    pool: &PgPool,
-    id: &str,
-    session_id: &str,
-    filename: &str,
-    file_format: &str,
-    file_size_bytes: i64,
-    volume_cm3: Option<f64>,
-    dimensions_mm: Option<&str>,
-    triangle_count: Option<i64>,
-    material_id: Option<&str>,
-    file_path: &str,
-    preview_url: &str,
-    created_at: NaiveDateTime,
-    support_analysis: Option<&str>,
-) -> Result<(), sqlx::Error> {
+pub async fn create(pool: &PgPool, model: CreateModel<'_>) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         INSERT INTO uploaded_models
@@ -26,19 +11,19 @@ pub async fn create(
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         "#,
     )
-    .bind(id)
-    .bind(session_id)
-    .bind(filename)
-    .bind(file_format)
-    .bind(file_size_bytes)
-    .bind(volume_cm3)
-    .bind(dimensions_mm)
-    .bind(triangle_count)
-    .bind(material_id)
-    .bind(file_path)
-    .bind(preview_url)
-    .bind(created_at)
-    .bind(support_analysis)
+    .bind(model.id)
+    .bind(model.session_id)
+    .bind(model.filename)
+    .bind(model.file_format)
+    .bind(model.file_size_bytes)
+    .bind(model.volume_cm3)
+    .bind(model.dimensions_mm)
+    .bind(model.triangle_count)
+    .bind(model.material_id)
+    .bind(model.file_path)
+    .bind(model.preview_url)
+    .bind(model.created_at)
+    .bind(model.support_analysis)
     .execute(pool)
     .await?;
 

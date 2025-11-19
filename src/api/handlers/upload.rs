@@ -7,13 +7,16 @@ use chrono::NaiveDateTime;
 use serde::Serialize;
 use std::path::PathBuf;
 
-use crate::business::{SessionService, file_processor};
 use crate::models::quote::UploadedModel;
 use crate::{
     api::middleware::{AppError, AppResult, sanitize_filename},
     persistence::models::create,
 };
 use crate::{api::routes::AppState, persistence::models};
+use crate::{
+    business::{SessionService, file_processor},
+    models::model::CreateModel,
+};
 
 #[derive(Serialize)]
 pub struct CreateSessionResponse {
@@ -199,19 +202,21 @@ pub async fn upload_model(
     // Save to database
     create(
         &state.pool,
-        &model.id,
-        &model.session_id,
-        &model.filename,
-        &model.file_format,
-        model.file_size_bytes,
-        model.volume_cm3,
-        model.dimensions_mm.as_deref(),
-        model.triangle_count,
-        model.material_id.as_deref(),
-        &model.file_path,
-        &model.preview_url,
-        model.created_at,
-        model.support_analysis.as_deref(),
+        CreateModel {
+            id: &model.id,
+            session_id: &model.session_id,
+            filename: &model.filename,
+            file_format: &model.file_format,
+            file_size_bytes: model.file_size_bytes,
+            volume_cm3: model.volume_cm3,
+            dimensions_mm: model.dimensions_mm.as_deref(),
+            triangle_count: model.triangle_count,
+            material_id: model.material_id.as_deref(),
+            file_path: &model.file_path,
+            preview_url: &model.preview_url,
+            created_at: model.created_at,
+            support_analysis: model.support_analysis.as_deref(),
+        },
     )
     .await?;
 
