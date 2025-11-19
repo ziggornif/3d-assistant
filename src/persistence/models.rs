@@ -35,7 +35,7 @@ pub async fn create(
     .bind(triangle_count)
     .bind(material_id)
     .bind(file_path)
-    .bind(created_at) 
+    .bind(created_at)
     .bind(support_analysis)
     .execute(pool)
     .await?;
