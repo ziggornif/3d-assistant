@@ -51,6 +51,7 @@ pub struct UploadedModel {
     pub triangle_count: Option<i64>,
     pub material_id: Option<String>,
     pub file_path: String,
+    pub preview_url: String,
     pub created_at: NaiveDateTime,
     pub support_analysis: Option<String>, // JSON: {needs_support, overhang_percentage, estimated_support_material_percentage}
 }
@@ -72,8 +73,10 @@ impl UploadedModel {
         file_size_bytes: i64,
         file_path: String,
     ) -> Self {
+        let id = Ulid::new().to_string();
+        let preview_url = format!("/uploads/{}/{}.{}", &session_id, &id, &file_format);
         Self {
-            id: Ulid::new().to_string(),
+            id,
             session_id,
             filename,
             file_format,
@@ -83,6 +86,7 @@ impl UploadedModel {
             triangle_count: None,
             material_id: None,
             file_path,
+            preview_url,
             created_at: Utc::now().naive_utc(),
             support_analysis: None,
         }

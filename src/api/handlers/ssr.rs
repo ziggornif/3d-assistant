@@ -14,24 +14,36 @@ use crate::models::QuoteSession;
 use crate::persistence;
 
 /// Render the main index page with SSR data
-pub async fn index_page(State(state): State<AppState>) -> Result<Html<String>, AppError> {
-    // Create a new session
-    let session = QuoteSession::new();
-    tracing::info!(
-        "Query : {} {} {} {}",
-        &session.id,
-        &session.created_at,
-        &session.expires_at,
-        &session.status
-    );
-    persistence::sessions::create(
-        &state.pool,
-        &session.id,
-        session.created_at,
-        session.expires_at,
-        &session.status,
-    )
-    .await?;
+
+pub async fn index_page(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> Result<(CookieJar, Html<String>), AppError> {
+    let mut session: Option<QuoteSession> = None;
+    let mut session_id_to_set: Option<String> = None;
+    if let Some(cookie) = jar.get("session_id") {
+        let sid = cookie.value();
+        if let Ok(Some(db_session)) = persistence::sessions::find_by_id(&state.pool, sid).await {
+            if db_session.expires_at > chrono::Utc::now().naive_utc() {
+                session = Some(db_session);
+            }
+        }
+    }
+
+    if session.is_none() {
+        let new_session = QuoteSession::new();
+        persistence::sessions::create(
+            &state.pool,
+            &new_session.id,
+            new_session.created_at,
+            new_session.expires_at,
+            &new_session.status,
+        )
+        .await?;
+        session_id_to_set = Some(new_session.id.clone());
+        session = Some(new_session);
+    }
+    let session = session.expect("Session should be set");
 
     // Fetch active materials
     let materials = persistence::materials::list_all_active(&state.pool).await?;
@@ -51,7 +63,20 @@ pub async fn index_page(State(state): State<AppState>) -> Result<Html<String>, A
         .map_err(|e| AppError::Internal(format!("Template rendering failed: {}", e)))?;
 
     tracing::info!("SSR rendered index page with session: {}", session.id);
-    Ok(Html(html))
+
+    if let Some(sid) = session_id_to_set {
+        let is_production = state.config.is_production();
+        let cookie = Cookie::build(("session_id", sid))
+            .path("/")
+            .http_only(true)
+            .secure(is_production)
+            .same_site(SameSite::Lax)
+            .max_age(time::Duration::hours(24))
+            .build();
+        Ok((jar.add(cookie), Html(html)))
+    } else {
+        Ok((jar, Html(html)))
+    }
 }
 
 /// Render the admin page

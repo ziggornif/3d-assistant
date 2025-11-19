@@ -124,21 +124,45 @@ function setupEventListeners() {
 /**
  * Restore models from session storage
  */
-function restoreModels() {
-  const models = sessionManager.getModels();
 
-  if (models.length > 0) {
-    const modelsSection = document.getElementById('models-section');
-    if (modelsSection) {
-      modelsSection.hidden = false;
+import { getSessionModels } from './services/api-client.js';
+
+async function restoreModels() {
+  const sessionId = sessionManager.getSessionId();
+  if (!sessionId) return;
+
+  try {
+    const models = await getSessionModels(sessionId);
+    sessionManager.models = [];
+    if (Array.isArray(models)) {
+      models.forEach(rawModel => {
+        const model = {
+          ...rawModel,
+          model_id: rawModel.id,
+          dimensions_mm:
+            typeof rawModel.dimensions_mm === 'string'
+              ? JSON.parse(rawModel.dimensions_mm)
+              : rawModel.dimensions_mm,
+          support_analysis:
+            typeof rawModel.support_analysis === 'string'
+              ? JSON.parse(rawModel.support_analysis)
+              : rawModel.support_analysis,
+        };
+        sessionManager.addModel(model);
+      });
     }
-
-    models.forEach(model => {
-      renderModel(model);
-    });
-
-    // Show quote section if models exist
-    updateQuoteVisibility();
+    if (models.length > 0) {
+      const modelsSection = document.getElementById('models-section');
+      if (modelsSection) {
+        modelsSection.hidden = false;
+      }
+      sessionManager.getModels().forEach(model => {
+        renderModel(model);
+      });
+      updateQuoteVisibility();
+    }
+  } catch (e) {
+    console.error('Erreur lors du chargement des modèles de la session:', e);
   }
 }
 

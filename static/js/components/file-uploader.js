@@ -282,7 +282,7 @@ class FileUploader extends HTMLElement {
 
     try {
       // Ensure we have a session
-      const sessionId = await sessionManager.ensureSession();
+      const sessionId = await sessionManager.getSessionId();
 
       // Upload with progress tracking
       const result = await uploadModel(sessionId, file, progress => {

@@ -15,14 +15,15 @@ pub async fn create(
     triangle_count: Option<i64>,
     material_id: Option<&str>,
     file_path: &str,
+    preview_url: &str,
     created_at: NaiveDateTime,
     support_analysis: Option<&str>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         INSERT INTO uploaded_models
-        (id, session_id, filename, file_format, file_size_bytes, volume_cm3, dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        (id, session_id, filename, file_format, file_size_bytes, volume_cm3, dimensions_mm, triangle_count, material_id, file_path, preview_url, created_at, support_analysis)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         "#,
     )
     .bind(id)
@@ -35,6 +36,7 @@ pub async fn create(
     .bind(triangle_count)
     .bind(material_id)
     .bind(file_path)
+    .bind(preview_url)
     .bind(created_at)
     .bind(support_analysis)
     .execute(pool)
@@ -52,7 +54,7 @@ pub async fn find_by_id_and_session(
     sqlx::query_as(
         r#"
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
+               dimensions_mm, triangle_count, material_id, file_path, preview_url, created_at, support_analysis
         FROM uploaded_models
         WHERE id = $1 AND session_id = $2
         "#,
@@ -71,7 +73,7 @@ pub async fn find_by_session(
     sqlx::query_as(
         r#"
         SELECT id, session_id, filename, file_format, file_size_bytes, volume_cm3,
-               dimensions_mm, triangle_count, material_id, file_path, created_at, support_analysis
+               dimensions_mm, triangle_count, material_id, file_path, preview_url, created_at, support_analysis
         FROM uploaded_models
         WHERE session_id = $1
         "#,

@@ -1,4 +1,18 @@
 /**
+ * Get all models for a session
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<Array>} List of models
+ */
+export async function getSessionModels(sessionId) {
+  const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}/models`, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+  return handleResponse(response);
+}
+/**
  * API Client for communicating with the backend service
  */
 

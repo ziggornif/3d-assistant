@@ -58,6 +58,10 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
             "/api/sessions/{session_id}/models/{model_id}",
             delete(upload::delete_model),
         )
+        .route(
+            "/api/sessions/{session_id}/models",
+            get(upload::get_session_models),
+        )
         // Materials
         .route("/api/materials", get(materials::list_materials))
         // Model configuration

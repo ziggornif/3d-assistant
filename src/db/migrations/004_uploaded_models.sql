@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS uploaded_models (
     triangle_count BIGINT,
     material_id TEXT REFERENCES materials(id),
     file_path TEXT NOT NULL,
+    preview_url TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     support_analysis TEXT -- JSON: {needs_support: bool, overhang_percentage: float, estimated_support_material_percentage: float}
 );

@@ -209,6 +209,7 @@ pub async fn upload_model(
         model.triangle_count,
         model.material_id.as_deref(),
         &model.file_path,
+        &model.preview_url,
         model.created_at,
         model.support_analysis.as_deref(),
     )
@@ -240,8 +241,20 @@ pub async fn upload_model(
         },
         triangle_count: processed.triangle_count,
         file_size_bytes: model.file_size_bytes,
-        preview_url: format!("/uploads/{}/{}.{}", session_id, model.id, file_format),
+        preview_url: model.preview_url,
     }))
+}
+
+pub async fn get_session_models(
+    State(state): State<AppState>,
+    Path(session_id): Path<String>,
+) -> AppResult<Json<Vec<UploadedModel>>> {
+    let session_service = SessionService::new(state.pool.clone(), &state.config.upload_dir);
+    session_service.get_session(&session_id).await?;
+
+    let models = models::find_by_session(&state.pool, &session_id).await?;
+
+    Ok(Json(models))
 }
 
 /// Delete an uploaded model
