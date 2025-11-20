@@ -50,22 +50,52 @@ test.describe('Homepage UI', () => {
   });
 
   test('should initialize session on page load', async ({ page }) => {
-    // Wait for session initialization (check for console message)
-    await page.waitForFunction(
-      () => {
-        // Check localStorage for session data
-        const sessionData = localStorage.getItem('quote_session');
-        return sessionData !== null;
-      },
-      { timeout: 10000 }
-    );
+    // Wait for session initialization by checking the session cookie
+    // Use the Playwright cookie API so this works even if the cookie is httpOnly
+    const timeout = 10000;
+    const start = Date.now();
+    // Search all cookies and accept either:
+    // - a cookie whose value is JSON with { sessionId }
+    // - or a cookie whose value is the sessionId directly (ULID)
+    const ulidRe = /^[0-9A-Z]{26}$/;
+    let found = null;
+    while (Date.now() - start < timeout) {
+      const cookies = await page.context().cookies();
+      for (const c of cookies) {
+        let val = c.value;
+        try {
+          val = decodeURIComponent(val);
+        } catch {
+          // ignore
+        }
 
-    const sessionData = await page.evaluate(() => localStorage.getItem('quote_session'));
-    expect(sessionData).toBeTruthy();
+        // Try JSON parse
+        try {
+          const p = JSON.parse(val);
+          if (p && typeof p === 'object' && p.sessionId && ulidRe.test(p.sessionId)) {
+            found = { cookie: c, sessionId: p.sessionId };
+            break;
+          }
+        } catch {
+          // not JSON, fallthrough
+        }
 
-    const parsed = JSON.parse(sessionData);
-    expect(parsed).toHaveProperty('sessionId');
-    expect(parsed.sessionId).toMatch(/^[0-9A-Z]{26}$/); // ULID format
+        // Try raw ULID value
+        if (ulidRe.test(val)) {
+          found = { cookie: c, sessionId: val };
+          break;
+        }
+      }
+
+      if (found) break;
+      await page.waitForTimeout(200);
+    }
+
+    expect(found).toBeTruthy();
+    if (!found) throw new Error('No cookie containing a valid sessionId ULID was found');
+
+    const parsedSessionId = found.sessionId;
+    expect(parsedSessionId).toMatch(ulidRe);
   });
 
   test('should have footer with copyright', async ({ page }) => {
