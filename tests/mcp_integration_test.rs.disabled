@@ -14,17 +14,18 @@ use quote_service::{
     api::routes::create_router,
     config::Config,
     db::create_pool,
-    mcp::server::{JsonRpcRequest, JsonRpcResponse},
 };
-use serde_json::{json, Value};
+use rmcp::model::{JsonRpcRequest, JsonRpcResponse};
+use serde_json::{Value, json};
 use sqlx::PgPool;
 use tempfile::TempDir;
 use tower::ServiceExt;
 
 /// Test helper to create test database pool
 async fn setup_test_db() -> PgPool {
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost/quote_service_test".to_string());
+    let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+        "postgres://postgres:postgres@localhost/quote_service_test".to_string()
+    });
 
     create_pool(&database_url, 5)
         .await
@@ -34,13 +35,22 @@ async fn setup_test_db() -> PgPool {
 /// Test helper to create test config
 fn setup_test_config(temp_dir: &TempDir) -> Config {
     Config {
-        database_url: std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://postgres:postgres@localhost/quote_service_test".to_string()),
+        database_url: std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://postgres:postgres@localhost/quote_service_test".to_string()
+        }),
         host: "127.0.0.1".to_string(),
         port: 8080,
-        upload_dir: temp_dir.path().join("uploads").to_string_lossy().to_string(),
+        upload_dir: temp_dir
+            .path()
+            .join("uploads")
+            .to_string_lossy()
+            .to_string(),
         static_dir: temp_dir.path().join("static").to_string_lossy().to_string(),
-        template_dir: temp_dir.path().join("templates").to_string_lossy().to_string(),
+        template_dir: temp_dir
+            .path()
+            .join("templates")
+            .to_string_lossy()
+            .to_string(),
         max_file_size_bytes: 100 * 1024 * 1024,
         admin_token: "test-admin-token".to_string(),
         session_expiry_hours: 24,
@@ -103,10 +113,7 @@ async fn test_mcp_tools_list() {
     // Verify all 4 tools are present
     assert_eq!(tools.len(), 4);
 
-    let tool_names: Vec<&str> = tools
-        .iter()
-        .map(|t| t["name"].as_str().unwrap())
-        .collect();
+    let tool_names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
 
     assert!(tool_names.contains(&"upload_model"));
     assert!(tool_names.contains(&"list_materials"));
@@ -384,13 +391,11 @@ async fn test_mcp_configure_nonexistent_model() {
 async fn create_test_session(pool: &PgPool) -> String {
     let session_id = ulid::Ulid::new().to_string();
 
-    sqlx::query(
-        "INSERT INTO sessions (id, expires_at) VALUES ($1, NOW() + INTERVAL '24 hours')"
-    )
-    .bind(&session_id)
-    .execute(pool)
-    .await
-    .unwrap();
+    sqlx::query("INSERT INTO sessions (id, expires_at) VALUES ($1, NOW() + INTERVAL '24 hours')")
+        .bind(&session_id)
+        .execute(pool)
+        .await
+        .unwrap();
 
     session_id
 }
@@ -418,13 +423,13 @@ fn create_minimal_stl() -> Vec<u8> {
 
     // Vertex 2
     stl.extend_from_slice(&10f32.to_le_bytes()); // x
-    stl.extend_from_slice(&0f32.to_le_bytes());  // y
-    stl.extend_from_slice(&0f32.to_le_bytes());  // z
+    stl.extend_from_slice(&0f32.to_le_bytes()); // y
+    stl.extend_from_slice(&0f32.to_le_bytes()); // z
 
     // Vertex 3
-    stl.extend_from_slice(&0f32.to_le_bytes());  // x
+    stl.extend_from_slice(&0f32.to_le_bytes()); // x
     stl.extend_from_slice(&10f32.to_le_bytes()); // y
-    stl.extend_from_slice(&0f32.to_le_bytes());  // z
+    stl.extend_from_slice(&0f32.to_le_bytes()); // z
 
     // Attribute byte count
     stl.extend_from_slice(&0u16.to_le_bytes());

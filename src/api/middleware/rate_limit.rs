@@ -49,7 +49,7 @@ impl RateLimitLayer {
     }
 
     #[allow(dead_code)]
-    pub fn default() -> Self {
+    pub fn with_default_config() -> Self {
         Self::new(RateLimitConfig::default())
     }
 }

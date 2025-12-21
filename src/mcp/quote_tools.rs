@@ -128,10 +128,10 @@ impl QuoteTools {
         Parameters(input): Parameters<UploadModelInput>,
     ) -> Result<String, String> {
         use crate::api::middleware::sanitize_filename;
-        use crate::business::{file_processor, SessionService};
+        use crate::business::{SessionService, file_processor};
         use crate::models::{model::CreateModel, quote::UploadedModel};
         use crate::persistence::models;
-        use base64::{engine::general_purpose, Engine as _};
+        use base64::{Engine as _, engine::general_purpose};
         use std::path::PathBuf;
 
         // Verify session exists
@@ -159,8 +159,9 @@ impl QuoteTools {
         let filename = sanitize_filename(&input.filename);
 
         // Validate file format
-        let file_format = file_processor::validate_file(&bytes, &filename, self.max_file_size as i64)
-            .map_err(|e| format!("File validation failed: {}", e))?;
+        let file_format =
+            file_processor::validate_file(&bytes, &filename, self.max_file_size as i64)
+                .map_err(|e| format!("File validation failed: {}", e))?;
 
         tracing::info!(
             "MCP: Received file: {} ({} bytes, format: {})",
@@ -188,8 +189,7 @@ impl QuoteTools {
                 .map_err(|e| format!("Failed to create directory: {}", e))?;
         }
 
-        std::fs::write(&file_path, &bytes)
-            .map_err(|e| format!("Failed to save file: {}", e))?;
+        std::fs::write(&file_path, &bytes).map_err(|e| format!("Failed to save file: {}", e))?;
 
         model.file_path = file_path.to_string_lossy().to_string();
 
@@ -232,7 +232,11 @@ impl QuoteTools {
         .await
         .map_err(|e| format!("Failed to save model: {}", e))?;
 
-        tracing::info!("MCP: Created model {} for session {}", model.id, input.session_id);
+        tracing::info!(
+            "MCP: Created model {} for session {}",
+            model.id,
+            input.session_id
+        );
 
         let result = UploadModelResult {
             model_id: model.id,
@@ -240,11 +244,13 @@ impl QuoteTools {
             file_format: model.file_format,
             volume_cm3: model.volume_cm3,
             dimensions_mm: model.dimensions_mm.and_then(|dims_json| {
-                serde_json::from_str::<serde_json::Value>(&dims_json).ok().map(|dims| Dimensions {
-                    x: dims["x"].as_f64().unwrap_or(0.0),
-                    y: dims["y"].as_f64().unwrap_or(0.0),
-                    z: dims["z"].as_f64().unwrap_or(0.0),
-                })
+                serde_json::from_str::<serde_json::Value>(&dims_json)
+                    .ok()
+                    .map(|dims| Dimensions {
+                        x: dims["x"].as_f64().unwrap_or(0.0),
+                        y: dims["y"].as_f64().unwrap_or(0.0),
+                        z: dims["z"].as_f64().unwrap_or(0.0),
+                    })
             }),
             triangle_count: model.triangle_count.map(|t| t as i32),
         };
@@ -419,7 +425,8 @@ impl ServerHandler for QuoteTools {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             instructions: Some(
-                "3D Print Quote Service - Upload models, configure materials, and generate quotes".into(),
+                "3D Print Quote Service - Upload models, configure materials, and generate quotes"
+                    .into(),
             ),
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()
