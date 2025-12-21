@@ -250,6 +250,15 @@ function renderModel(modelData) {
   card.className = 'model-card';
   card.setAttribute('role', 'listitem');
 
+  // Get material color if available
+  let materialColor = '';
+  if (modelData.material_id && window.__MATERIALS_CACHE__) {
+    const material = window.__MATERIALS_CACHE__.find(m => m.id === modelData.material_id);
+    if (material && material.color) {
+      materialColor = `model-color="${material.color}"`;
+    }
+  }
+
   card.innerHTML = `
     <div class="model-info">
       <h3>${escapeHtml(modelData.filename)}</h3>
@@ -257,7 +266,7 @@ function renderModel(modelData) {
       <p>Dimensions: ${modelData.dimensions_mm.x.toFixed(1)} × ${modelData.dimensions_mm.y.toFixed(1)} × ${modelData.dimensions_mm.z.toFixed(1)} mm</p>
     </div>
     <div class="model-viewer-container">
-      <model-viewer model-url="${modelData.preview_url}" auto-rotate="true"></model-viewer>
+      <model-viewer model-url="${modelData.preview_url}" auto-rotate="true" ${materialColor}></model-viewer>
     </div>
     <div class="model-config">
       <material-selector
@@ -279,8 +288,16 @@ function renderModel(modelData) {
 
   // Add material selection handler
   const materialSelector = card.querySelector('material-selector');
+  const modelViewer = card.querySelector('model-viewer');
+
   materialSelector.addEventListener('material-selected', async e => {
-    const { materialId, modelId, estimatedPrice } = e.detail;
+    const { materialId, modelId, estimatedPrice, material } = e.detail;
+
+    // Update 3D viewer color if material has a color
+    if (material && material.color && modelViewer) {
+      modelViewer.setAttribute('model-color', material.color);
+    }
+
     await onMaterialSelected(modelId, materialId, estimatedPrice);
   });
 
