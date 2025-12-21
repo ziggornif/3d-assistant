@@ -1,6 +1,6 @@
 use axum::{
     Router,
-    extract::DefaultBodyLimit,
+    extract::{DefaultBodyLimit, State},
     middleware,
     routing::{delete, get, patch, post},
 };
@@ -89,6 +89,8 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
                 .route("/cleanup", post(admin::cleanup_expired_sessions))
                 .layer(middleware::from_fn(admin_auth)),
         )
+        // MCP (Model Context Protocol) endpoint - integrated directly
+        .route("/mcp", post(mcp_handler))
         // Serve uploaded files
         .nest_service("/uploads", ServeDir::new(upload_dir))
         // Serve static frontend assets (CSS, JS, images)
@@ -106,4 +108,40 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
 /// Health check endpoint
 async fn health_check() -> &'static str {
     "OK"
+}
+
+/// MCP JSON-RPC handler
+async fn mcp_handler(
+    State(state): State<AppState>,
+    body: axum::body::Bytes,
+) -> (axum::http::StatusCode, axum::Json<crate::mcp::server::JsonRpcResponse>) {
+    use crate::mcp::server::{handle_mcp_request_internal, McpServerConfig};
+
+    let config = McpServerConfig {
+        pool: state.pool.clone(),
+        upload_dir: state.config.upload_dir.clone(),
+        max_file_size: state.config.max_file_size_bytes as usize,
+    };
+
+    // Parse JSON-RPC request
+    let request: crate::mcp::server::JsonRpcRequest = match serde_json::from_slice(&body) {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                axum::http::StatusCode::BAD_REQUEST,
+                axum::Json(crate::mcp::server::JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: None,
+                    result: None,
+                    error: Some(crate::mcp::server::JsonRpcError {
+                        code: -32700,
+                        message: format!("Parse error: {}", e),
+                        data: None,
+                    }),
+                }),
+            );
+        }
+    };
+
+    handle_mcp_request_internal(config, request).await
 }

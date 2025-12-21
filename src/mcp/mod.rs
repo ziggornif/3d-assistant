@@ -1,0 +1,8 @@
+//! MCP (Model Context Protocol) server implementation
+//!
+//! This module provides programmatic access to the quote service via the Model Context Protocol,
+//! allowing AI models and automation tools to generate quotes without using the web interface.
+
+pub mod server;
+pub mod tools;
+pub mod types;

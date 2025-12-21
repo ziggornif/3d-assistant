@@ -3,6 +3,7 @@ mod business;
 mod config;
 mod db;
 mod integrations;
+mod mcp;
 mod models;
 mod persistence;
 

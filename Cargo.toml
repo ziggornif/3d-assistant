@@ -52,6 +52,11 @@ time = "0.3.44"
 tower_governor = "0.8.0"
 governor = "0.10.2"
 
+# MCP (Model Context Protocol)
+rmcp = { version = "0.9", features = ["server"] }
+schemars = "0.8"
+base64 = "0.22"
+
 [dev-dependencies]
 tokio-test = "0.4.4"
 tempfile = "3.23.0"
