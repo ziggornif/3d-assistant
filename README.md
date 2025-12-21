@@ -198,6 +198,8 @@ Chaque composant (file-uploader, model-viewer, material-selector, quote-summary)
 ## Roadmap
 
 - [x] Support fichiers 3MF
+- [ ] MCP (Model Context Protocol) pour permettre à un modèle IA de faire un devis sans utiliser le front
+- [ ] Système de webhooks pour exporter les devis vers des plateformes externes (Notion, Obsidian, Odoo, etc.)
 - [ ] Export PDF des devis
 - [ ] Notifications email
 - [ ] Multi-langue (i18n)

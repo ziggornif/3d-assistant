@@ -235,7 +235,91 @@
 
 ---
 
-## Phase 7: Polish & Cross-Cutting Concerns
+## Phase 7: User Story 5 - MCP for AI Model Integration (Priority: P5)
+
+**Goal**: Enable AI models to generate quotes programmatically via MCP (Model Context Protocol) without using the frontend interface
+
+**Independent Test**: Use MCP client to upload a file, configure materials, and receive a quote - all via protocol commands
+
+### Tests for User Story 5
+
+- [ ] T143 [P] [US5] Contract test for MCP server initialization in tests/mcp/test_server.rs
+- [ ] T144 [P] [US5] Contract test for MCP tool: upload_model in tests/mcp/test_tools.rs
+- [ ] T145 [P] [US5] Contract test for MCP tool: list_materials in tests/mcp/test_tools.rs
+- [ ] T146 [P] [US5] Contract test for MCP tool: configure_model in tests/mcp/test_tools.rs
+- [ ] T147 [P] [US5] Contract test for MCP tool: generate_quote in tests/mcp/test_tools.rs
+- [ ] T148 [P] [US5] Integration test for complete MCP quote workflow in tests/mcp/test_workflow.rs
+- [ ] T149 [P] [US5] Unit test for MCP request/response validation in tests/mcp/test_validation.rs
+
+### Implementation for User Story 5
+
+- [ ] T150 [P] [US5] Add MCP server dependencies (mcp-server or axum-based MCP implementation) to Cargo.toml
+- [ ] T151 [US5] Create MCP server module structure in src/mcp/mod.rs
+- [ ] T152 [P] [US5] Implement MCP server initialization and lifecycle in src/mcp/server.rs
+- [ ] T153 [P] [US5] Define MCP tool schemas (upload_model, list_materials, configure_model, generate_quote) in src/mcp/schemas.rs
+- [ ] T154 [US5] Implement MCP tool: upload_model (accepts base64 file data, returns model_id) in src/mcp/tools/upload.rs
+- [ ] T155 [US5] Implement MCP tool: list_materials (returns available materials with prices) in src/mcp/tools/materials.rs
+- [ ] T156 [US5] Implement MCP tool: configure_model (set material for model_id) in src/mcp/tools/configure.rs
+- [ ] T157 [US5] Implement MCP tool: generate_quote (calculate and return quote) in src/mcp/tools/quote.rs
+- [ ] T158 [US5] Implement MCP resource provider for session management in src/mcp/resources.rs
+- [ ] T159 [US5] Add MCP server configuration to .env.example (MCP_ENABLED, MCP_PORT, MCP_TRANSPORT)
+- [ ] T160 [US5] Integrate MCP server startup with main application in src/main.rs
+- [ ] T161 [US5] Create MCP client example script for testing in examples/mcp_client.py or examples/mcp_client.js
+- [ ] T162 [US5] Add MCP server documentation to README.md (how to enable, available tools, example usage)
+- [ ] T163 [US5] Implement error handling and validation for MCP requests in src/mcp/error.rs
+- [ ] T164 [US5] Add logging and tracing for MCP operations in src/mcp/server.rs
+
+**Checkpoint**: User Story 5 complete - AI models can generate quotes via MCP without frontend
+
+---
+
+## Phase 8: User Story 6 - Webhook System for External Integrations (Priority: P6)
+
+**Goal**: Enable administrators to configure webhooks that automatically export quotes to external platforms (Notion, Obsidian, Odoo, etc.)
+
+**Independent Test**: Configure a webhook URL → generate a quote → verify quote data is sent to external endpoint with correct format and retry on failure
+
+### Tests for User Story 6
+
+- [ ] T165 [P] [US6] Contract test for GET /api/admin/webhooks in tests/api/admin.spec.js
+- [ ] T166 [P] [US6] Contract test for POST /api/admin/webhooks in tests/api/admin.spec.js
+- [ ] T167 [P] [US6] Contract test for PUT /api/admin/webhooks/{id} in tests/api/admin.spec.js
+- [ ] T168 [P] [US6] Contract test for DELETE /api/admin/webhooks/{id} in tests/api/admin.spec.js
+- [ ] T169 [P] [US6] Contract test for POST /api/admin/webhooks/{id}/test in tests/api/admin.spec.js
+- [ ] T170 [P] [US6] Unit test for webhook payload formatting in backend/src/services/webhook.rs
+- [ ] T171 [P] [US6] Unit test for webhook retry logic with exponential backoff in backend/src/services/webhook.rs
+- [ ] T172 [P] [US6] Integration test for webhook triggering on quote generation in tests/api/webhooks.spec.js
+- [ ] T173 [P] [US6] Unit test for webhook authentication headers in backend/src/services/webhook.rs
+
+### Implementation for User Story 6
+
+- [ ] T174 [P] [US6] Add webhook HTTP client dependencies (reqwest) to Cargo.toml
+- [ ] T175 [US6] Create webhook configuration table in database migration in backend/src/db/migrations/
+- [ ] T176 [P] [US6] Create Webhook entity model in backend/src/models/webhook.rs
+- [ ] T177 [P] [US6] Create WebhookLog entity for tracking webhook attempts in backend/src/models/webhook.rs
+- [ ] T178 [US6] Implement webhook delivery service with retry logic in backend/src/services/webhook.rs
+- [ ] T179 [US6] Implement webhook payload template engine in backend/src/services/webhook_template.rs
+- [ ] T180 [US6] Create GET /api/admin/webhooks endpoint in backend/src/api/handlers/admin.rs
+- [ ] T181 [US6] Create POST /api/admin/webhooks endpoint in backend/src/api/handlers/admin.rs
+- [ ] T182 [US6] Create PUT /api/admin/webhooks/{id} endpoint in backend/src/api/handlers/admin.rs
+- [ ] T183 [US6] Create DELETE /api/admin/webhooks/{id} endpoint in backend/src/api/handlers/admin.rs
+- [ ] T184 [US6] Create POST /api/admin/webhooks/{id}/test endpoint for testing webhooks in backend/src/api/handlers/admin.rs
+- [ ] T185 [US6] Create GET /api/admin/webhooks/{id}/logs endpoint to view webhook history in backend/src/api/handlers/admin.rs
+- [ ] T186 [US6] Integrate webhook triggering into quote generation in backend/src/services/pricing.rs
+- [ ] T187 [US6] Add webhook configuration UI in admin panel in frontend/js/admin/webhooks.js
+- [ ] T188 [US6] Implement webhook form with URL, auth headers, and template editor in frontend/js/admin/webhooks.js
+- [ ] T189 [US6] Add webhook test button and result display in frontend/js/admin/webhooks.js
+- [ ] T190 [US6] Display webhook execution logs in admin panel in frontend/js/admin/webhooks.js
+- [ ] T191 [US6] Add webhook configuration to .env.example (WEBHOOK_MAX_RETRIES, WEBHOOK_TIMEOUT)
+- [ ] T192 [US6] Create webhook documentation with examples for Notion, Odoo in docs/webhooks.md
+- [ ] T193 [US6] Implement webhook security: validate URLs, sanitize headers in backend/src/services/webhook.rs
+- [ ] T194 [US6] Add webhook monitoring and alerting for repeated failures in backend/src/services/webhook.rs
+
+**Checkpoint**: User Story 6 complete - Administrators can configure webhooks to export quotes to external platforms
+
+---
+
+## Phase 9: Polish & Cross-Cutting Concerns
 
 **Purpose**: Improvements that affect multiple user stories
 
@@ -269,10 +353,10 @@
 
 - **Setup (Phase 1)**: No dependencies - can start immediately
 - **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
-- **User Stories (Phase 3-6)**: All depend on Foundational phase completion
-  - User stories can proceed in priority order (P1 → P2 → P3 → P4)
+- **User Stories (Phase 3-8)**: All depend on Foundational phase completion
+  - User stories can proceed in priority order (P1 → P2 → P3 → P4 → P5 → P6)
   - Or in parallel if team has capacity
-- **Polish (Phase 7)**: Depends on at least User Story 3 (P3) being complete
+- **Polish (Phase 9)**: Depends on at least User Story 3 (P3) being complete
 
 ### User Story Dependencies
 
@@ -280,6 +364,8 @@
 - **User Story 2 (P2)**: Can start after Foundational (Phase 2) - Uses models from US1 but independently testable
 - **User Story 3 (P3)**: Can start after Foundational (Phase 2) - Uses US2 pricing logic but independently testable
 - **User Story 4 (P4)**: Can start after Foundational (Phase 2) - Completely independent
+- **User Story 5 (P5)**: Can start after Foundational (Phase 2) - Reuses existing API logic, independently testable via MCP protocol
+- **User Story 6 (P6)**: Depends on User Story 3 (P3) - Needs quote generation to trigger webhooks, but independently testable
 
 ### Within Each User Story
 
@@ -350,7 +436,9 @@ Task: "Frontend unit test for quote-summary component in frontend/tests/unit/tes
 3. Add User Story 2 → Test independently → **Enhanced: Material Configuration**
 4. Add User Story 3 → Test independently → **Complete: Quote Generation**
 5. Add User Story 4 → Test independently → **Admin: Pricing Management**
-6. Polish phase → Test all together → **Production Ready**
+6. Add User Story 5 → Test independently → **AI Integration: MCP for Programmatic Access**
+7. Add User Story 6 → Test independently → **External Integration: Webhook System**
+8. Polish phase → Test all together → **Production Ready**
 
 ### Parallel Team Strategy
 

@@ -75,6 +75,41 @@ As an administrator, I want to update material prices and pricing formulas easil
 
 ---
 
+### User Story 5 - MCP Integration for AI Models (Priority: P5)
+
+As an AI model or automation system, I want to generate quotes programmatically via MCP (Model Context Protocol) so that I can integrate quote generation into automated workflows without using the web interface.
+
+**Why this priority**: Enables AI models and automation tools to leverage the quote service programmatically. This extends the platform's reach beyond human users to AI assistants and automated systems.
+
+**Independent Test**: Can be fully tested by using an MCP client to upload a file, configure materials, and receive a quote entirely through protocol commands.
+
+**Acceptance Scenarios**:
+
+1. **Given** an MCP client is connected to the server, **When** it calls the upload_model tool with base64-encoded file data, **Then** it receives a model_id and model metadata
+2. **Given** an MCP client has uploaded a model, **When** it calls the list_materials tool, **Then** it receives a list of available materials with prices
+3. **Given** an MCP client has a model_id, **When** it calls the configure_model tool with material selection, **Then** the configuration is saved and confirmed
+4. **Given** an MCP client has configured models, **When** it calls the generate_quote tool, **Then** it receives a complete quote with itemized breakdown
+
+---
+
+### User Story 6 - Webhook System for External Integrations (Priority: P6)
+
+As a system administrator, I want to configure webhooks that export quotes to external platforms (Notion, Obsidian, Odoo, etc.) so that I can integrate the quote service into my existing workflow tools without manual copy-paste.
+
+**Why this priority**: Enables seamless integration with external business tools and CRM systems. This makes the quote service part of a larger ecosystem rather than a standalone tool.
+
+**Independent Test**: Can be fully tested by configuring a webhook URL, generating a quote, and verifying the quote data is sent to the external endpoint with correct format and retry logic.
+
+**Acceptance Scenarios**:
+
+1. **Given** I am an administrator, **When** I configure a webhook URL with authentication headers, **Then** the configuration is saved and can be tested
+2. **Given** a webhook is configured, **When** a quote is generated, **Then** the quote data is sent to the webhook URL with proper formatting
+3. **Given** a webhook call fails, **When** the system retries, **Then** it follows exponential backoff and logs the failure
+4. **Given** I want to customize exports, **When** I configure webhook payload templates, **Then** the quote data is transformed according to the template before sending
+5. **Given** I have multiple webhooks configured, **When** a quote is generated, **Then** all active webhooks receive the quote data in parallel
+
+---
+
 ### Edge Cases
 
 - What happens when a user uploads a corrupted or malformed STL/3MF file?
@@ -108,6 +143,18 @@ As an administrator, I want to update material prices and pricing formulas easil
 - **FR-018**: System MUST limit individual file size to 50MB maximum
 - **FR-019**: System MUST provide visual feedback during file upload and processing
 - **FR-020**: System MUST allow users to remove uploaded files from their quote session
+- **FR-021**: System MUST provide an MCP (Model Context Protocol) server for programmatic access
+- **FR-022**: System MUST expose MCP tools for file upload, material listing, model configuration, and quote generation
+- **FR-023**: System MUST validate and sanitize MCP requests with same security as web API
+- **FR-024**: System MUST support base64-encoded file uploads via MCP protocol
+- **FR-025**: System MUST return structured JSON responses conforming to MCP specification
+- **FR-026**: System MUST provide webhook configuration interface for administrators
+- **FR-027**: System MUST trigger webhooks when quotes are generated or updated
+- **FR-028**: System MUST support customizable webhook payload templates
+- **FR-029**: System MUST implement retry logic with exponential backoff for failed webhook calls
+- **FR-030**: System MUST log all webhook attempts with success/failure status
+- **FR-031**: System MUST support authentication headers (API keys, Bearer tokens) for webhooks
+- **FR-032**: System MUST allow webhook testing before activation
 
 ### Key Entities
 
