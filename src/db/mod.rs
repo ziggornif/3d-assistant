@@ -8,8 +8,13 @@ pub type DbPool = Pool<Postgres>;
 
 /// Initialize database connection pool
 pub async fn init_pool(database_url: &str) -> Result<DbPool> {
+    create_pool(database_url, 10).await
+}
+
+/// Create database connection pool with custom max_connections (useful for testing)
+pub async fn create_pool(database_url: &str, max_connections: u32) -> Result<DbPool> {
     let pool = PgPoolOptions::new()
-        .max_connections(10)
+        .max_connections(max_connections)
         .min_connections(1)
         .acquire_timeout(std::time::Duration::from_secs(30))
         .connect(database_url)
