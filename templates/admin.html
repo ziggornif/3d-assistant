@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Administration - 3D Quote Service{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/css/admin.css">
+{% endblock %}
+
+{% block head_scripts %}
+    <!-- Server-side rendered data (SSR) -->
+    <script>
+        window.__SSR_DATA__ = {
+            apiBase: "{{ api_base }}",
+            {% if authenticated %}
+            authenticated: true,
+            materials: {{ materials_json | safe }},
+            pricingHistory: {{ pricing_history_json | safe }}
+            {% else %}
+            authenticated: false,
+            materials: [],
+            pricingHistory: []
+            {% endif %}
+        };
+    </script>
+{% endblock %}
+
+{% block body %}
+    <header>
+        <h1>Administration</h1>
+        <p>Gestion des matériaux et tarification</p>
+    </header>
+
+    <main>
+        {% if not authenticated %}
+        <!-- Login Section -->
+        <section id="login-section">
+            <h2>Connexion Administrateur</h2>
+            <form id="login-form" method="POST" action="/admin/login">
+                <div class="form-group">
+                    <label for="admin-token">Token d'administration</label>
+                    <input
+                        type="password"
+                        id="admin-token"
+                        name="token"
+                        placeholder="Entrez le token admin"
+                        required
+                    />
+                </div>
+                <button type="submit" class="btn-primary">Se connecter</button>
+            </form>
+            <p id="login-error" class="error-message" {% if not login_error %}hidden{% endif %}>{% if login_error %}{{ login_error }}{% endif %}</p>
+        </section>
+        {% else %}
+        <!-- Admin Panel -->
+        <section id="admin-panel">
+            <div class="admin-header">
+                <h2>Gestion des Matériaux</h2>
+                <form method="POST" action="/admin/logout" style="display: inline;">
+                    <button type="submit" id="logout-btn" class="btn-secondary">Déconnexion</button>
+                </form>
+            </div>
+
+            <!-- Add Material Form -->
+            <div class="admin-card">
+                <h3>Ajouter un Matériau</h3>
+                <form id="add-material-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new-name">Nom</label>
+                            <input type="text" id="new-name" required />
+                        </div>
+                        <div class="form-group">
+                            <label for="new-price">Prix par cm³ (€)</label>
+                            <input
+                                type="number"
+                                id="new-price"
+                                step="0.001"
+                                min="0"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-description">Description</label>
+                        <textarea id="new-description" rows="2"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new-color">Couleur</label>
+                            <input type="color" id="new-color" value="#CCCCCC" />
+                        </div>
+                        <div class="form-group">
+                            <label for="new-service-type">Type de service</label>
+                            <select id="new-service-type">
+                                <option value="3d_printing">Impression 3D</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Ajouter</button>
+                </form>
+            </div>
+
+            <!-- Materials List (pre-rendered) -->
+            <div class="admin-card">
+                <h3>Liste des Matériaux</h3>
+                <div id="materials-list" class="materials-table">
+                    {% if materials | length > 0 %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Prix/cm³</th>
+                                <th>Couleur</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for material in materials %}
+                            <tr data-id="{{ material.id }}">
+                                <td>{{ material.name }}</td>
+                                <td>{{ material.price_per_cm3 | round(precision=3) }} €</td>
+                                <td>
+                                    <span class="color-preview" style="background-color: {{ material.color | default(value='#CCCCCC') }}"></span>
+                                    {{ material.color | default(value='#CCCCCC') }}
+                                </td>
+                                <td>
+                                    <span class="status-badge {% if material.active %}active{% else %}inactive{% endif %}">
+                                        {% if material.active %}Actif{% else %}Inactif{% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn-small edit-btn" data-id="{{ material.id }}">Modifier</button>
+                                    <button class="btn-small toggle-btn" data-id="{{ material.id }}" data-active="{{ material.active }}">
+                                        {% if material.active %}Désactiver{% else %}Activer{% endif %}
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>Aucun matériau disponible</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Pricing History (pre-rendered) -->
+            <div class="admin-card">
+                <h3>Historique des Prix</h3>
+                <div id="pricing-history">
+                    {% if pricing_history | length > 0 %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Matériau</th>
+                                <th>Ancien prix</th>
+                                <th>Nouveau prix</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in pricing_history %}
+                            <tr>
+                                <td>{{ entry.changed_at }}</td>
+                                <td>{{ entry.material_name }}</td>
+                                <td>{% if entry.old_price %}{{ entry.old_price | round(precision=3) }} €{% else %}-{% endif %}</td>
+                                <td>{{ entry.new_price | round(precision=3) }} €</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p>Aucun historique disponible</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </main>
+
+    <!-- Edit Material Modal -->
+    <div id="edit-modal" class="modal" hidden>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Modifier le Matériau</h3>
+                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form id="edit-material-form">
+                <input type="hidden" id="edit-material-id" />
+                <div class="form-group">
+                    <label for="edit-name">Nom</label>
+                    <input type="text" id="edit-name" required />
+                </div>
+                <div class="form-group">
+                    <label for="edit-price">Prix par cm³ (€)</label>
+                    <input type="number" id="edit-price" step="0.001" min="0" required />
+                </div>
+                <div class="form-group">
+                    <label for="edit-description">Description</label>
+                    <textarea id="edit-description" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="edit-color">Couleur</label>
+                    <input type="color" id="edit-color" />
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeEditModal()">Annuler</button>
+                    <button type="submit" class="btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container"></div>
+
+    <footer>
+        <p>3D Quote Service - Interface Administrateur</p>
+    </footer>
+{% endblock %}
+
+{% block scripts %}
+    <script type="module" src="/static/js/admin/main.js"></script>
+{% endblock %}
