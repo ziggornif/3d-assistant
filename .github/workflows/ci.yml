@@ -44,7 +44,7 @@ jobs:
         run: cargo build --release
 
       - name: Run unit tests
-        run: cargo test
+        run: cargo test --lib --bins
 
   # JavaScript linting
   lint:
@@ -154,6 +154,11 @@ jobs:
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run integration tests
+        run: cargo test --test mcp_integration_test
+        env:
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_quotes
 
       - name: Run E2E tests
         run: pnpm test:e2e
