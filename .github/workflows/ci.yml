@@ -155,13 +155,14 @@ jobs:
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres
-
       - name: Setup test database
-        run: sqlx database setup
+        run: |
+          cargo build --bin quote-service
+          timeout 10s cargo run --bin quote-service || true
         env:
           DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_quotes
+          HOST: 127.0.0.1
+          PORT: 3001
 
       - name: Run integration tests
         run: cargo test --test mcp_integration_test
