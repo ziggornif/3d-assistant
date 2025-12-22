@@ -148,6 +148,8 @@ async function restoreModels() {
               ? JSON.parse(rawModel.support_analysis)
               : rawModel.support_analysis,
         };
+        // addModel() triggers 'model-added' event which calls renderModel()
+        // No need to call renderModel() again in the loop below
         sessionManager.addModel(model);
       });
     }
@@ -156,9 +158,8 @@ async function restoreModels() {
       if (modelsSection) {
         modelsSection.hidden = false;
       }
-      sessionManager.getModels().forEach(model => {
-        renderModel(model);
-      });
+      // Models are already rendered via 'model-added' events above
+      // Just update quote visibility
       updateQuoteVisibility();
     }
   } catch (e) {
