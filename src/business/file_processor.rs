@@ -265,7 +265,7 @@ fn extract_component_paths(xml_content: &str) -> Vec<String> {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Empty(ref e)) | Ok(Event::Start(ref e)) => {
+            Ok(Event::Empty(ref e) | Event::Start(ref e)) => {
                 if e.local_name().as_ref() == b"component" {
                     for attr in e.attributes().flatten() {
                         if attr.key.local_name().as_ref() == b"path"
@@ -298,7 +298,7 @@ fn parse_3mf_mesh(xml_content: &str) -> Result<Vec<[f32; 9]>, AppError> {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+            Ok(Event::Start(ref e) | Event::Empty(ref e)) => {
                 let local_name = e.local_name();
                 match local_name.as_ref() {
                     b"vertices" => in_vertices = true,

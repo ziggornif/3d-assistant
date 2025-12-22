@@ -118,8 +118,7 @@ pub async fn generate_quote(
             // Calculate support volume based on support analysis
             let support_percentage = model
                 .get_support_analysis()
-                .map(|s| s.estimated_support_material_percentage as f64)
-                .unwrap_or(0.0);
+                .map_or(0.0, |s| f64::from(s.estimated_support_material_percentage));
 
             let support_volume = base_volume * (support_percentage / 100.0);
             let total_volume = base_volume + support_volume;
@@ -148,7 +147,7 @@ pub async fn generate_quote(
     let quote_id = Ulid::new().to_string();
     let now = chrono::Utc::now().naive_utc();
     let breakdown_json = serde_json::to_string(&breakdown)
-        .map_err(|e| AppError::Internal(format!("JSON serialization error: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("JSON serialization error: {e}")))?;
 
     quotes::create(
         &state.pool,
@@ -221,8 +220,7 @@ pub async fn get_current_quote(
                 // Calculate support volume based on support analysis
                 let support_percentage = model
                     .get_support_analysis()
-                    .map(|s| s.estimated_support_material_percentage as f64)
-                    .unwrap_or(0.0);
+                    .map_or(0.0, |s| f64::from(s.estimated_support_material_percentage));
 
                 let support_volume = base_volume * (support_percentage / 100.0);
                 let total_volume = base_volume + support_volume;

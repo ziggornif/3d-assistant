@@ -234,7 +234,7 @@ pub async fn cleanup_expired_sessions(
     let result = session_service
         .cleanup_expired()
         .await
-        .map_err(|e| AppError::Internal(format!("Cleanup failed: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Cleanup failed: {e}")))?;
 
     tracing::info!(
         "Admin triggered cleanup: {} sessions, {} directories, {} errors",
