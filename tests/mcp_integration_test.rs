@@ -217,8 +217,8 @@ async fn test_mcp_service_creation() {
         config.max_file_size_bytes as usize,
     );
 
-    // If we get here, MCP service was created successfully
-    assert!(true);
+    // If we get here without panicking, the MCP service was created successfully
+    // The router is a StreamableHttpService that will handle MCP protocol requests
 }
 
 #[tokio::test]
@@ -343,4 +343,68 @@ async fn test_session_cleanup() {
 
     assert_eq!(result.sessions_deleted, 0);
     assert!(session_dir.exists());
+}
+
+#[tokio::test]
+async fn test_mcp_authentication_required() {
+    use axum::{
+        Router,
+        body::Body,
+        http::{Request, StatusCode},
+        middleware,
+    };
+    use quote_service::api::middleware::mcp_auth;
+    use tower::ServiceExt;
+
+    let pool = setup_test_db().await;
+    let temp_dir = TempDir::new().unwrap();
+    let config = setup_test_config(&temp_dir);
+
+    std::fs::create_dir_all(&config.upload_dir).unwrap();
+
+    // Create router with MCP authentication
+    let mcp_service =
+        create_mcp_router(pool, config.upload_dir, config.max_file_size_bytes as usize);
+    let router = Router::new()
+        .route_service("/mcp", mcp_service)
+        .layer(middleware::from_fn(mcp_auth));
+
+    // Test 1: Request without authentication should fail
+    let request = Request::builder().uri("/mcp").body(Body::empty()).unwrap();
+
+    let response = router.clone().oneshot(request).await.unwrap();
+    assert_eq!(
+        response.status(),
+        StatusCode::UNAUTHORIZED,
+        "Request without auth should be rejected"
+    );
+
+    // Test 2: Request with invalid token should fail
+    let request = Request::builder()
+        .uri("/mcp")
+        .header("Authorization", "Bearer invalid-token")
+        .body(Body::empty())
+        .unwrap();
+
+    let response = router.clone().oneshot(request).await.unwrap();
+    assert_eq!(
+        response.status(),
+        StatusCode::UNAUTHORIZED,
+        "Request with invalid token should be rejected"
+    );
+
+    // Test 3: Request with valid token should succeed (or at least not return 401)
+    let mcp_token = std::env::var("MCP_TOKEN").unwrap_or_else(|_| "mcp-secret-token".to_string());
+    let request = Request::builder()
+        .uri("/mcp")
+        .header("Authorization", format!("Bearer {}", mcp_token))
+        .body(Body::empty())
+        .unwrap();
+
+    let response = router.oneshot(request).await.unwrap();
+    assert_ne!(
+        response.status(),
+        StatusCode::UNAUTHORIZED,
+        "Request with valid token should not be rejected for auth reasons"
+    );
 }

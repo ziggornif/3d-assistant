@@ -32,6 +32,29 @@ pub async fn admin_auth(request: Request, next: Next) -> Result<Response, Status
     Err(StatusCode::UNAUTHORIZED)
 }
 
+/// MCP token authentication middleware
+/// Uses Bearer token authentication for MCP clients (AI models, automation tools)
+pub async fn mcp_auth(request: Request, next: Next) -> Result<Response, StatusCode> {
+    let mcp_token = std::env::var("MCP_TOKEN").unwrap_or_else(|_| "mcp-secret-token".to_string());
+
+    // Bearer token auth for MCP endpoint
+    let auth_header = request
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok());
+
+    if let Some(auth) = auth_header {
+        if let Some(token) = auth.strip_prefix("Bearer ") {
+            if token == mcp_token {
+                return Ok(next.run(request).await);
+            }
+        }
+    }
+
+    tracing::warn!("Missing or invalid MCP authentication (invalid or missing Bearer token)");
+    Err(StatusCode::UNAUTHORIZED)
+}
+
 /// Extract admin username from request (for audit trail)
 /// For MVP, returns a static admin user
 #[allow(dead_code)]

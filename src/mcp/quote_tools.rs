@@ -308,7 +308,10 @@ impl QuoteTools {
 
         let volume = model.volume_cm3.unwrap_or(0.0);
         let unit_price = material.calculate_price(volume);
-        let unit_price_f64 = unit_price.to_string().parse::<f64>().unwrap_or(0.0);
+        let unit_price_f64 = unit_price
+            .to_string()
+            .parse::<f64>()
+            .map_err(|e| format!("Invalid price calculation: {}", e))?;
         let estimated_price = unit_price_f64 * input.quantity as f64;
 
         tracing::info!(
@@ -362,7 +365,12 @@ impl QuoteTools {
         let mut subtotal = 0.0;
 
         for model in session_models {
-            let material_id = model.material_id.as_ref().unwrap();
+            let material_id = model.material_id.as_ref().ok_or_else(|| {
+                format!(
+                    "Model {} missing material_id (should not happen after validation)",
+                    model.id
+                )
+            })?;
             let material = materials::find_by_id(&self.pool, material_id)
                 .await
                 .map_err(|e| format!("Failed to fetch material: {}", e))?
@@ -370,7 +378,10 @@ impl QuoteTools {
 
             let volume = model.volume_cm3.unwrap_or(0.0);
             let unit_price = material.calculate_price(volume);
-            let unit_price_f64 = unit_price.to_string().parse::<f64>().unwrap_or(0.0);
+            let unit_price_f64 = unit_price
+                .to_string()
+                .parse::<f64>()
+                .map_err(|e| format!("Invalid price calculation for model {}: {}", model.id, e))?;
             let quantity = 1;
             let line_total = unit_price_f64 * quantity as f64;
 

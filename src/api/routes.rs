@@ -11,7 +11,7 @@ use tower_http::trace::TraceLayer;
 
 use crate::api::handlers::{admin, materials, quote, ssr, upload};
 use crate::api::middleware::{
-    admin_auth, create_login_rate_limiter, create_rate_limiter, security_headers,
+    admin_auth, create_login_rate_limiter, create_rate_limiter, mcp_auth, security_headers,
 };
 use crate::config::Config;
 use crate::db::DbPool;
@@ -91,9 +91,14 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
                 .layer(middleware::from_fn(admin_auth)),
         )
         // MCP (Model Context Protocol) endpoint
-        .nest_service(
+        .nest(
             "/mcp",
-            crate::mcp::create_mcp_router(pool, upload_dir.clone(), max_file_size),
+            Router::new()
+                .nest_service(
+                    "/",
+                    crate::mcp::create_mcp_router(pool, upload_dir.clone(), max_file_size),
+                )
+                .layer(middleware::from_fn(mcp_auth)),
         )
         // Serve uploaded files
         .nest_service("/uploads", ServeDir::new(upload_dir))
