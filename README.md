@@ -40,28 +40,101 @@ Service de devis instantané pour impression 3D. Téléchargez vos fichiers STL/
 
 ## Installation
 
-### 1. Cloner le projet
+### Méthode 1: Installation locale (développement)
+
+#### Prérequis
+- Rust 1.75+ et Cargo
+- PostgreSQL 14+
+- Node.js 22+ et pnpm 10+ (pour les tests E2E uniquement)
+
+#### Étapes
+
+**1. Cloner le projet**
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/ziggornif/3d-assistant.git
 cd 3d-assistant
 ```
 
-### 2. Application (Rust + SSR)
+**2. Configurer PostgreSQL**
 
 ```bash
-# Copier la configuration
-cp .env.example .env
+# Créer la base de données
+createdb quotes
 
-# Éditer .env si nécessaire (port, upload dir, admin token)
-# ADMIN_TOKEN=votre-token-secret
-
-# Compiler et lancer
-cargo build --release
-cargo run
+# Ou avec psql
+psql -c "CREATE DATABASE quotes;"
 ```
 
-Le serveur démarre sur `http://127.0.0.1:3000` avec SSR (Server-Side Rendering). L'application est accessible directement à cette adresse.
+**3. Configurer les variables d'environnement**
+
+```bash
+# Copier le fichier d'exemple
+cp .env.example .env
+
+# Éditer .env avec vos valeurs
+# IMPORTANT: Changez ADMIN_TOKEN et MCP_TOKEN !
+nano .env  # ou votre éditeur préféré
+```
+
+Exemple de `.env` pour développement local:
+```env
+DATABASE_URL=postgres://postgres:password@localhost:5432/quotes
+ADMIN_TOKEN=$(openssl rand -base64 32)
+MCP_TOKEN=$(openssl rand -base64 32)
+HOST=127.0.0.1
+PORT=3000
+```
+
+**4. Initialiser la base de données**
+
+La base est initialisée automatiquement au premier démarrage (migrations embarquées).
+
+**5. Compiler et lancer**
+
+```bash
+# Mode développement (avec logs détaillés)
+RUST_LOG=debug cargo run
+
+# Ou mode release (plus rapide)
+cargo build --release
+./target/release/quote-service
+```
+
+Le serveur démarre sur `http://127.0.0.1:3000`.
+
+**6. Vérifier l'installation**
+
+- Interface utilisateur: http://127.0.0.1:3000/
+- Interface admin: http://127.0.0.1:3000/admin.html (utilisez votre ADMIN_TOKEN)
+- Health check: http://127.0.0.1:3000/health
+
+### Méthode 2: Docker Compose (production-like)
+
+**Prérequis**: Docker et Docker Compose installés
+
+```bash
+# 1. Cloner le projet
+git clone https://github.com/ziggornif/3d-assistant.git
+cd 3d-assistant
+
+# 2. Configurer les variables d'environnement
+cp .env.example .env
+# ⚠️ Éditez .env et changez ADMIN_TOKEN et MCP_TOKEN
+
+# 3. Démarrer les services (PostgreSQL + Application)
+docker compose up -d
+
+# 4. Vérifier les logs
+docker compose logs -f
+
+# 5. Arrêter les services
+docker compose down
+```
+
+L'application sera accessible sur `http://localhost:3000`.
+
+**Note**: Le `docker-compose.yml` utilise des mots de passe de démonstration pour PostgreSQL. Changez-les en production.
 
 ### 3. Tests
 
@@ -81,23 +154,52 @@ pnpm lint
 
 ### Variables d'environnement (.env)
 
+Toutes les variables ci-dessous doivent être définies dans un fichier `.env` à la racine du projet.
+
+#### Obligatoires
+
 ```env
 # Base de données PostgreSQL
 DATABASE_URL=postgres://user:password@localhost:5432/quotes
+# Format: postgres://USER:PASSWORD@HOST:PORT/DATABASE
+# Exemple: postgres://quote_user:secret@localhost:5432/quotes_prod
 
+# Token d'authentification admin (interface /admin.html)
+ADMIN_TOKEN=your-secure-admin-token-here
+# ⚠️ IMPORTANT: Changez cette valeur en production !
+# Générez un token sécurisé: openssl rand -base64 32
+
+# Token d'authentification MCP (API programmatique /mcp)
+MCP_TOKEN=your-secure-mcp-token-here
+# ⚠️ IMPORTANT: Changez cette valeur en production !
+# Générez un token sécurisé: openssl rand -base64 32
+```
+
+#### Optionnelles (avec valeurs par défaut)
+
+```env
 # Serveur
-HOST=127.0.0.1
-PORT=3000
+HOST=127.0.0.1              # Adresse d'écoute (défaut: 127.0.0.1)
+PORT=3000                   # Port du serveur (défaut: 3000)
 
-# Uploads
-MAX_FILE_SIZE_MB=50
-UPLOAD_DIR=./uploads
+# Uploads de fichiers 3D
+MAX_FILE_SIZE_MB=50         # Taille max par fichier (défaut: 50 MB)
+UPLOAD_DIR=./uploads        # Répertoire de stockage (défaut: ./uploads)
 
-# Sessions
-SESSION_EXPIRY_HOURS=24
+# Gestion des sessions
+SESSION_EXPIRY_HOURS=24     # Durée de vie des sessions (défaut: 24h)
 
-# Admin
-ADMIN_TOKEN=admin-secret-token-2025
+# Logging (optionnel)
+RUST_LOG=info              # Niveau de logs: error, warn, info, debug, trace
+```
+
+#### Exemple complet (.env.example)
+
+Un fichier `.env.example` est fourni avec des valeurs de démonstration. **Ne l'utilisez jamais en production** sans changer les tokens.
+
+```bash
+cp .env.example .env
+# Éditez .env et changez ADMIN_TOKEN et MCP_TOKEN
 ```
 
 ### Docker Compose
