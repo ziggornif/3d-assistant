@@ -131,7 +131,7 @@ Cela démarre PostgreSQL + l'application avec les variables d'environnement conf
 - `POST /api/admin/cleanup` - Nettoyer les sessions expirées et fichiers uploadés
 
 ### MCP (Model Context Protocol)
-- `POST /mcp` - Endpoint MCP pour accès programmatique (voir [documentation MCP](docs/MCP.md))
+- `POST /mcp` - Endpoint MCP pour accès programmatique
 
 **Outils MCP disponibles :**
 - `list_materials` - Lister les matériaux et prix
@@ -139,7 +139,7 @@ Cela démarre PostgreSQL + l'application avec les variables d'environnement conf
 - `configure_model` - Configurer un modèle avec matériau/quantité
 - `generate_quote` - Générer un devis complet
 
-Voir la [documentation MCP complète](docs/MCP.md) pour les détails d'utilisation.
+**Documentation :** [Français](docs/i18n/fr/MCP.md) | [English](docs/i18n/en/MCP.md)
 
 ## Interface Admin
 
