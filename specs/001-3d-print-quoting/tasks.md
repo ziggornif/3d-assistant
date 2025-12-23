@@ -273,6 +273,50 @@
 
 ---
 
+## Phase 7.1: User Story 5.1 - MCP Security & Quality Fixes (Priority: P0 - CRITICAL)
+
+**Goal**: Fix critical security vulnerabilities and code quality issues in MCP implementation identified during code review
+
+**Why P0**: BLOCKING for production. MCP endpoint currently has no authentication, unsafe unwraps that can panic, and price calculations that can default to 0€.
+
+**Independent Test**: Attempt unauthorized MCP access (should fail with 401), test error scenarios (should not panic), verify price calculations never default to 0
+
+### Critical Security Fixes for User Story 5.1
+
+- [ ] T164-A [US5.1] Create MCP authentication middleware in src/api/middleware/mcp_auth.rs
+- [ ] T164-B [US5.1] Apply MCP authentication to /mcp endpoint in src/api/routes.rs:94-96
+- [ ] T164-C [P] [US5.1] Replace unsafe unwrap() with proper error handling in src/mcp/quote_tools.rs:365
+- [ ] T164-D [P] [US5.1] Fix price calculation error handling (no default to 0) in src/mcp/quote_tools.rs:311
+- [ ] T164-E [P] [US5.1] Fix price calculation error handling (no default to 0) in src/mcp/quote_tools.rs:373
+
+### Test Fixes for User Story 5.1
+
+- [ ] T164-F [P] [US5.1] Fix or remove failing test_session_cleanup in tests/mcp_integration_test.rs:318-346
+- [ ] T164-G [P] [US5.1] Replace useless assert!(true) with meaningful validation in tests/mcp_integration_test.rs:221
+- [ ] T164-H [US5.1] Add integration test for MCP authentication in tests/mcp_integration_test.rs
+- [ ] T164-I [US5.1] Add integration test for error handling (invalid material_id, etc.) in tests/mcp_integration_test.rs
+
+### Feature Completion for User Story 5.1
+
+- [ ] T164-J [US5.1] Fix quantity parameter persistence or remove from configure_model in src/mcp/quote_tools.rs:71
+- [ ] T164-K [US5.1] Update generate_quote to use persisted quantity instead of hardcoded 1 in src/mcp/quote_tools.rs:374
+- [ ] T164-L [US5.1] Add test for quantity-based quote calculation in tests/mcp_integration_test.rs
+
+### Documentation Updates for User Story 5.1
+
+- [ ] T164-M [P] [US5.1] Update English MCP documentation with authentication requirements in docs/i18n/en/MCP.md
+- [ ] T164-N [P] [US5.1] Update French MCP documentation with authentication requirements in docs/i18n/fr/MCP.md
+- [ ] T164-O [US5.1] Add security section to MCP documentation in docs/i18n/en/MCP.md and docs/i18n/fr/MCP.md
+
+**Checkpoint**: User Story 5.1 complete - MCP endpoint is secure, stable, and production-ready
+
+**Reference**:
+- Code Review: PR #5 internal review 2025-12-23
+- Backlog Item: BL-007
+- User Story: US 5.1 in spec.md
+
+---
+
 ## Phase 8: User Story 6 - Webhook System for External Integrations (Priority: P6)
 
 **Goal**: Enable administrators to configure webhooks that automatically export quotes to external platforms (Notion, Obsidian, Odoo, etc.)

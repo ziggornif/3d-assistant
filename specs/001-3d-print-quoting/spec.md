@@ -92,6 +92,51 @@ As an AI model or automation system, I want to generate quotes programmatically 
 
 ---
 
+### User Story 5.1 - MCP Security & Quality Fixes (Priority: P0 - Critical)
+
+As a system administrator, I want the MCP endpoint to be secure and robust so that the service cannot be abused and remains stable under all conditions.
+
+**Why this priority**: CRITICAL BLOCKING ISSUES. The MCP integration (US5) has security vulnerabilities that must be fixed before production deployment. Without these fixes, the service is exposed to unauthorized access, resource exhaustion, and price manipulation.
+
+**Code Review Findings**: Based on PR #5 code review, the following critical issues were identified:
+- No authentication on MCP endpoint (CRITICAL)
+- Unsafe unwrap() that can cause panics (HIGH)
+- Price calculations defaulting to 0 on errors (HIGH - financial risk)
+- Test failures (test_session_cleanup)
+- Useless test assertions
+- Quantity parameter inconsistency
+
+**Independent Test**: Can be fully tested by attempting unauthorized MCP access (should fail), testing error scenarios (should not panic), and verifying price calculations never default to 0.
+
+**Acceptance Scenarios**:
+
+1. **Given** an unauthenticated MCP client tries to access the endpoint, **When** it sends a request without valid credentials, **Then** it receives a 401 Unauthorized error
+2. **Given** an MCP tool encounters an error condition, **When** the error occurs, **Then** the service returns a proper error message without panicking
+3. **Given** a price calculation encounters invalid data, **When** it processes the data, **Then** it fails with an error instead of defaulting to 0€
+4. **Given** all MCP integration tests run, **When** executed in CI, **Then** all tests pass without failures
+5. **Given** a model is configured with a quantity, **When** a quote is generated, **Then** the quantity is properly used in price calculation (or parameter is removed if not implemented)
+
+**Technical Tasks**:
+- T001: Create MCP authentication middleware
+- T002: Apply authentication to /mcp endpoint
+- T003: Replace unwrap() with proper error handling at line 365
+- T004: Fix price calculation error handling at lines 311, 373
+- T005: Fix or remove failing test_session_cleanup
+- T006: Replace useless assert!(true) with meaningful validation
+- T007: Fix quantity parameter persistence and usage
+- T008: Add error handling integration tests
+- T009: Update MCP documentation with authentication requirements
+
+**Definition of Done**:
+- [ ] MCP endpoint requires authentication
+- [ ] No unwrap() or expect() on user-controlled data
+- [ ] All price calculations fail fast on errors
+- [ ] All integration tests pass in CI
+- [ ] Security audit approved
+- [ ] Documentation updated
+
+---
+
 ### User Story 6 - Webhook System for External Integrations (Priority: P6)
 
 As a system administrator, I want to configure webhooks that export quotes to external platforms (Notion, Obsidian, Odoo, etc.) so that I can integrate the quote service into my existing workflow tools without manual copy-paste.
