@@ -40,6 +40,13 @@ jobs:
       - name: Run Clippy
         run: cargo clippy -- -D warnings
 
+      - name: Security audit
+        run: |
+          cargo install cargo-audit --locked
+          # Ignore RUSTSEC-2023-0071 (RSA in sqlx-mysql) - we only use PostgreSQL
+          # Warnings about unmaintained dependencies are acceptable for MVP
+          cargo audit --ignore RUSTSEC-2023-0071
+
       - name: Build
         run: cargo build --release
 
