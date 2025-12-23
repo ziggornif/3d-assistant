@@ -43,12 +43,11 @@ pub async fn mcp_auth(request: Request, next: Next) -> Result<Response, StatusCo
         .get(header::AUTHORIZATION)
         .and_then(|h| h.to_str().ok());
 
-    if let Some(auth) = auth_header {
-        if let Some(token) = auth.strip_prefix("Bearer ") {
-            if token == mcp_token {
-                return Ok(next.run(request).await);
-            }
-        }
+    if let Some(auth) = auth_header
+        && let Some(token) = auth.strip_prefix("Bearer ")
+        && token == mcp_token
+    {
+        return Ok(next.run(request).await);
     }
 
     tracing::warn!("Missing or invalid MCP authentication (invalid or missing Bearer token)");
