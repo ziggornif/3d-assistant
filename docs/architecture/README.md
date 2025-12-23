@@ -1,13 +1,13 @@
 # Architecture Documentation
 
-> **Translations**: [English](i18n/en/README.md) | [Français](i18n/fr/README.md)
+> **Translations**: [English](../en/architecture.md) | [Français](../fr/architecture.md)
 
 This documentation provides a comprehensive overview of the 3D Print Quote Service architecture, including system design, data flows, and technical decisions.
 
 ## Quick Links
 
-- 📖 [English Documentation](i18n/en/README.md)
-- 📖 [Documentation Française](i18n/fr/README.md)
+- 📖 [English Documentation](../en/architecture.md)
+- 📖 [Documentation Française](../fr/architecture.md)
 
 ## What's Covered
 

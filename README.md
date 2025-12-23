@@ -241,7 +241,7 @@ Cela démarre PostgreSQL + l'application avec les variables d'environnement conf
 - `configure_model` - Configurer un modèle avec matériau/quantité
 - `generate_quote` - Générer un devis complet
 
-**Documentation :** [Français](docs/i18n/fr/MCP.md) | [English](docs/i18n/en/MCP.md)
+**Documentation :** [Français](docs/fr/mcp.md) | [English](docs/en/mcp.md)
 
 ## Interface Admin
 

@@ -1,13 +1,13 @@
 # MCP (Model Context Protocol) Integration
 
-> **Translations**: [English](i18n/en/MCP.md) | [Français](i18n/fr/MCP.md)
+> **Translations**: [English](en/mcp.md) | [Français](fr/mcp.md)
 
-This documentation is available in multiple languages. Click on the links above to view the documentation in your preferred language.
+This documentation describes how to use the MCP (Model Context Protocol) integration to interact programmatically with the 3D Print Quote Service.
 
 ## Quick Links
 
-- 📖 [English Documentation](i18n/en/MCP.md)
-- 📖 [Documentation Française](i18n/fr/MCP.md)
+- 📖 [English Documentation](en/mcp.md)
+- 📖 [Documentation Française](fr/mcp.md)
 
 ## What is MCP?
 
