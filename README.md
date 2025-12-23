@@ -9,6 +9,7 @@ Service de devis instantané pour impression 3D. Téléchargez vos fichiers STL/
 - **Sélection de matériaux** : PLA, ABS, PETG, Résine avec prix personnalisés
 - **Devis instantané** : Calcul automatique basé sur le volume et le matériau
 - **Interface admin** : Gestion des prix et matériaux sans code
+- **MCP (Model Context Protocol)** : API programmatique pour IA et outils d'automatisation
 - **Nettoyage automatique** : Suppression des sessions expirées et fichiers uploadés
 - **Accessibilité** : Conformité RGAA/WCAG 2.1 AA
 
@@ -129,6 +130,17 @@ Cela démarre PostgreSQL + l'application avec les variables d'environnement conf
 - `GET /api/admin/pricing-history` - Historique des changements de prix
 - `POST /api/admin/cleanup` - Nettoyer les sessions expirées et fichiers uploadés
 
+### MCP (Model Context Protocol)
+- `POST /mcp` - Endpoint MCP pour accès programmatique (voir [documentation MCP](docs/MCP.md))
+
+**Outils MCP disponibles :**
+- `list_materials` - Lister les matériaux et prix
+- `upload_model` - Uploader un modèle 3D (base64)
+- `configure_model` - Configurer un modèle avec matériau/quantité
+- `generate_quote` - Générer un devis complet
+
+Voir la [documentation MCP complète](docs/MCP.md) pour les détails d'utilisation.
+
 ## Interface Admin
 
 Accédez à `/admin.html` et utilisez votre token admin pour :
@@ -198,7 +210,7 @@ Chaque composant (file-uploader, model-viewer, material-selector, quote-summary)
 ## Roadmap
 
 - [x] Support fichiers 3MF
-- [ ] MCP (Model Context Protocol) pour permettre à un modèle IA de faire un devis sans utiliser le front
+- [x] MCP (Model Context Protocol) pour permettre à un modèle IA de faire un devis sans utiliser le front
 - [ ] Système de webhooks pour exporter les devis vers des plateformes externes (Notion, Obsidian, Odoo, etc.)
 - [ ] Export PDF des devis
 - [ ] Notifications email
