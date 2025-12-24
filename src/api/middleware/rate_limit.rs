@@ -120,7 +120,6 @@ pub fn create_rate_limiter() -> RateLimitLayer {
     RateLimitLayer::new(config)
 }
 
-
 /// Create a very strict rate limiter for admin login (brute force protection)
 pub fn create_login_rate_limiter() -> RateLimitLayer {
     let config = RateLimitConfig {
