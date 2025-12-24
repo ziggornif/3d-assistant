@@ -90,14 +90,15 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
                 .route("/cleanup", post(admin::cleanup_expired_sessions))
                 .layer(middleware::from_fn(admin_auth)),
         )
-        // MCP (Model Context Protocol) endpoint
+        // MCP (Model Context Protocol) endpoint with authentication
         .nest(
             "/mcp",
             Router::new()
-                .nest_service(
-                    "/",
-                    crate::mcp::create_mcp_router(pool, upload_dir.clone(), max_file_size),
-                )
+                .fallback_service(crate::mcp::create_mcp_router(
+                    pool,
+                    upload_dir.clone(),
+                    max_file_size,
+                ))
                 .layer(middleware::from_fn(mcp_auth)),
         )
         // Serve uploaded files
