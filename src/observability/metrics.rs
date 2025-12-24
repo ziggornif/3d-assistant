@@ -6,13 +6,11 @@
 
 use anyhow::Result;
 use opentelemetry::{global, KeyValue};
-use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{
-    metrics::{reader::DefaultAggregationSelector, reader::DefaultTemporalitySelector},
+    metrics::SdkMeterProvider,
     Resource,
 };
 use std::sync::Arc;
-use std::time::Duration;
 
 /// Metrics registry for the application
 pub struct Metrics {
@@ -147,32 +145,20 @@ impl Metrics {
 /// * `endpoint` - OTLP collector endpoint (e.g., "http://localhost:4317")
 /// * `service_name` - Service identifier for telemetry
 /// * `environment` - Environment name
-pub fn init_metrics(endpoint: &str, service_name: &str, environment: &str) -> Result<Metrics> {
-    // Create resource with service metadata
+pub fn init_metrics(_endpoint: &str, service_name: &str, environment: &str) -> Result<Metrics> {
+    // For now, use a simple in-memory meter provider
+    // TODO: Add OTLP metrics export once API is stable
     let resource = Resource::new(vec![
         KeyValue::new("service.name", service_name.to_string()),
         KeyValue::new("service.version", env!("CARGO_PKG_VERSION").to_string()),
         KeyValue::new("deployment.environment", environment.to_string()),
     ]);
 
-    // Configure OTLP metrics exporter
-    let exporter = opentelemetry_otlp::new_exporter()
-        .tonic()
-        .with_endpoint(endpoint)
-        .with_timeout(Duration::from_secs(3));
-
-    // Build metrics reader with periodic export
-    let reader = opentelemetry_otlp::new_pipeline()
-        .metrics(opentelemetry_sdk::runtime::Tokio)
-        .with_exporter(exporter)
+    let meter_provider = SdkMeterProvider::builder()
         .with_resource(resource)
-        .with_period(Duration::from_secs(5)) // Export every 5 seconds
-        .with_aggregation_selector(DefaultAggregationSelector::new())
-        .with_temporality_selector(DefaultTemporalitySelector::new())
-        .build()?;
+        .build();
 
-    // Set as global meter provider
-    global::set_meter_provider(reader.clone());
+    global::set_meter_provider(meter_provider);
 
     // Create meter and initialize metrics
     let meter = global::meter("quote-service");
