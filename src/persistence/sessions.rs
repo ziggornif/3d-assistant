@@ -43,27 +43,6 @@ pub async fn find_by_id(
     .await
 }
 
-/// Update session status
-pub async fn update_status(
-    pool: &PgPool,
-    session_id: &str,
-    status: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        r"
-        UPDATE quote_sessions
-        SET status = $1
-        WHERE id = $2
-        ",
-    )
-    .bind(status)
-    .bind(session_id)
-    .execute(pool)
-    .await?;
-
-    Ok(())
-}
-
 /// Find expired session IDs
 pub async fn find_expired_ids(
     pool: &PgPool,
@@ -95,19 +74,4 @@ pub async fn delete_expired(pool: &PgPool, now: NaiveDateTime) -> Result<u64, sq
     .await?;
 
     Ok(result.rows_affected())
-}
-
-/// Count expired sessions
-pub async fn count_expired(pool: &PgPool, now: NaiveDateTime) -> Result<i64, sqlx::Error> {
-    let count: (i64,) = sqlx::query_as(
-        r"
-        SELECT COUNT(*) FROM quote_sessions
-        WHERE expires_at < $1
-        ",
-    )
-    .bind(now)
-    .fetch_one(pool)
-    .await?;
-
-    Ok(count.0)
 }

@@ -11,9 +11,9 @@ pub struct Config {
     pub static_dir: String,
     pub template_dir: String,
     pub admin_token: String,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Used by is_production() and future session cleanup
     pub session_expiry_hours: i64,
-    #[allow(dead_code)]
+    #[allow(dead_code)] // Used by is_production()
     pub environment: String,
 }
 
@@ -70,7 +70,6 @@ impl Config {
     }
 
     /// Check if running in production
-    #[allow(dead_code)]
     pub fn is_production(&self) -> bool {
         self.environment == "production"
     }

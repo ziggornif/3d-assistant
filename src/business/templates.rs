@@ -31,9 +31,3 @@ pub fn render(template_name: &str, context: &tera::Context) -> Result<String, te
     let templates = TEMPLATES.read().unwrap();
     templates.render(template_name, context)
 }
-
-/// Reload templates (useful for development)
-#[allow(dead_code)]
-pub fn reload_templates(template_dir: &str) -> Result<(), tera::Error> {
-    init_templates(template_dir)
-}
