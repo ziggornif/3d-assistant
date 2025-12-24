@@ -53,24 +53,3 @@ pub async fn mcp_auth(request: Request, next: Next) -> Result<Response, StatusCo
     tracing::warn!("Missing or invalid MCP authentication (invalid or missing Bearer token)");
     Err(StatusCode::UNAUTHORIZED)
 }
-
-/// Extract admin username from request (for audit trail)
-/// For MVP, returns a static admin user
-#[allow(dead_code)]
-pub fn get_admin_user(_request: &Request) -> String {
-    "admin".to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_get_admin_user_returns_admin() {
-        let request = axum::http::Request::builder()
-            .body(axum::body::Body::empty())
-            .unwrap();
-        let user = get_admin_user(&request);
-        assert_eq!(user, "admin");
-    }
-}
