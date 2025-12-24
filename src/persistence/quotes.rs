@@ -12,10 +12,10 @@ pub async fn create(
     created_at: NaiveDateTime,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        r#"
+        r"
         INSERT INTO quotes (id, session_id, total_price, breakdown, status, created_at)
         VALUES ($1, $2, $3, $4, $5, $6)
-        "#,
+        ",
     )
     .bind(id)
     .bind(session_id)
@@ -35,13 +35,13 @@ pub async fn delete_by_expired_sessions(
     now: NaiveDateTime,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        r#"
+        r"
         DELETE FROM quotes
         WHERE session_id IN (
             SELECT id FROM quote_sessions
             WHERE expires_at < $1
         )
-        "#,
+        ",
     )
     .bind(now)
     .execute(pool)

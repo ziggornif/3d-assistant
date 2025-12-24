@@ -40,11 +40,18 @@ jobs:
       - name: Run Clippy
         run: cargo clippy -- -D warnings
 
+      - name: Security audit
+        run: |
+          cargo install cargo-audit --locked
+          # Ignore RUSTSEC-2023-0071 (RSA in sqlx-mysql) - we only use PostgreSQL
+          # Warnings about unmaintained dependencies are acceptable for MVP
+          cargo audit --ignore RUSTSEC-2023-0071
+
       - name: Build
         run: cargo build --release
 
       - name: Run unit tests
-        run: cargo test
+        run: cargo test --lib --bins
 
   # JavaScript linting
   lint:
@@ -154,6 +161,20 @@ jobs:
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Setup test database
+        run: |
+          cargo build --bin quote-service
+          timeout 10s cargo run --bin quote-service || true
+        env:
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_quotes
+          HOST: 127.0.0.1
+          PORT: 3001
+
+      - name: Run integration tests
+        run: cargo test --test mcp_integration_test
+        env:
+          DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_quotes
 
       - name: Run E2E tests
         run: pnpm test:e2e

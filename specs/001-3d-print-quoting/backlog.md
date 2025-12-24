@@ -41,6 +41,56 @@
 
 ---
 
+## Critical Issues
+
+#### BL-007: MCP Security Vulnerabilities ⚠️ CRITICAL
+**Category**: Security/Stability
+**Identified**: 2025-12-23 during PR #5 code review
+**Priority**: P0 - BLOCKING
+**Status**: Planned (US 5.1)
+**Components**: `src/mcp/quote_tools.rs`, `src/api/routes.rs`, `tests/mcp_integration_test.rs`
+
+**Issues Identified**:
+1. **No Authentication on MCP Endpoint** (CRITICAL)
+   - `/mcp` endpoint has no authentication middleware
+   - Anyone can upload files and generate quotes
+   - Risk: Resource exhaustion, abuse
+
+2. **Unsafe Unwrap** (HIGH)
+   - Line 365: `model.material_id.as_ref().unwrap()`
+   - Can panic if model missing material_id
+   - Risk: Service crashes
+
+3. **Price Manipulation** (HIGH - Financial Risk)
+   - Lines 311, 373: Price defaults to 0.0 on parse errors
+   - `unit_price.to_string().parse::<f64>().unwrap_or(0.0)`
+   - Risk: Free quotes, revenue loss
+
+4. **Test Failures** (HIGH)
+   - `test_session_cleanup` consistently fails
+   - `assert!(true)` at line 221 - useless assertion
+   - Risk: CI unreliability
+
+5. **Quantity Parameter Inconsistency** (MEDIUM)
+   - Parameter accepted but hardcoded to 1 in quote generation
+   - Risk: User confusion, incorrect quotes
+
+**Required Actions** (See US 5.1 in spec.md):
+- [ ] Add MCP authentication middleware
+- [ ] Replace unwrap with proper error handling
+- [ ] Fix price calculation error handling
+- [ ] Fix or remove failing tests
+- [ ] Fix quantity persistence or remove parameter
+- [ ] Add error handling integration tests
+- [ ] Update MCP documentation
+
+**References**:
+- PR #5: https://github.com/ziggornif/3d-assistant/pull/5
+- Code Review: Internal review 2025-12-23
+- User Story: US 5.1 in spec.md
+
+---
+
 ## Future Enhancements
 
 #### BL-003: 3MF File Format Support

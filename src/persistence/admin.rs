@@ -23,10 +23,10 @@ pub async fn create_pricing_history(
     changed_at: NaiveDateTime,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        r#"
+        r"
         INSERT INTO pricing_history (id, material_id, old_price, new_price, changed_by, changed_at)
         VALUES ($1, $2, $3, $4, $5, $6)
-        "#,
+        ",
     )
     .bind(id)
     .bind(material_id)
@@ -43,13 +43,13 @@ pub async fn create_pricing_history(
 /// Get pricing history with material names
 pub async fn get_pricing_history(pool: &PgPool) -> Result<Vec<PricingHistoryRow>, sqlx::Error> {
     sqlx::query_as(
-        r#"
+        r"
         SELECT ph.id, ph.material_id, ph.old_price, ph.new_price, ph.changed_by, ph.changed_at, m.name
         FROM pricing_history ph
         JOIN materials m ON ph.material_id = m.id
         ORDER BY ph.changed_at DESC
         LIMIT 100
-        "#,
+        ",
     )
     .fetch_all(pool)
     .await

@@ -3,6 +3,7 @@ mod business;
 mod config;
 mod db;
 mod integrations;
+mod mcp;
 mod models;
 mod persistence;
 
@@ -45,6 +46,24 @@ async fn main() -> Result<()> {
     // Seed initial data
     db::seed_data(&pool).await?;
     tracing::info!("Seed data loaded");
+
+    // Cleanup expired sessions on startup
+    let session_service = business::SessionService::new(pool.clone(), &config.upload_dir);
+    match session_service.cleanup_expired().await {
+        Ok(result) => {
+            tracing::info!(
+                "Startup cleanup: {} expired sessions deleted, {} directories removed",
+                result.sessions_deleted,
+                result.directories_deleted
+            );
+            if !result.errors.is_empty() {
+                tracing::warn!("Cleanup errors: {:?}", result.errors);
+            }
+        }
+        Err(e) => {
+            tracing::warn!("Failed to cleanup expired sessions on startup: {}", e);
+        }
+    }
 
     // Create router
     let app = api::create_router(pool, config.clone());

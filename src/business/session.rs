@@ -57,13 +57,6 @@ impl SessionService {
         Ok(session)
     }
 
-    /// Update session status
-    #[allow(dead_code)]
-    pub async fn update_status(&self, session_id: &str, status: &str) -> Result<(), AppError> {
-        persistence::sessions::update_status(&self.pool, session_id, status).await?;
-        Ok(())
-    }
-
     /// Clean up expired sessions and their associated upload files
     pub async fn cleanup_expired(&self) -> Result<CleanupResult> {
         let mut result = CleanupResult {
@@ -111,14 +104,5 @@ impl SessionService {
         );
 
         Ok(result)
-    }
-
-    /// Get count of expired sessions (without deleting)
-    #[allow(dead_code)]
-    pub async fn count_expired(&self) -> Result<i64> {
-        let now = Utc::now().naive_utc();
-        persistence::sessions::count_expired(&self.pool, now)
-            .await
-            .map_err(Into::into)
     }
 }

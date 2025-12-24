@@ -25,7 +25,7 @@ class ModelViewer extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['model-url', 'auto-rotate', 'show-dimensions'];
+    return ['model-url', 'auto-rotate', 'show-dimensions', 'model-color'];
   }
 
   connectedCallback() {
@@ -47,6 +47,9 @@ class ModelViewer extends HTMLElement {
     }
     if (name === 'auto-rotate' && this.controls) {
       this.controls.autoRotate = newValue === 'true';
+    }
+    if (name === 'model-color' && this.mesh && this.mesh.material) {
+      this.updateMeshColor(newValue);
     }
   }
 
@@ -399,8 +402,12 @@ class ModelViewer extends HTMLElement {
     // Apply Y translation to geometry
     geometry.translate(0, yOffset, 0);
 
+    // Get color from attribute or use default orange
+    const colorAttr = this.getAttribute('model-color');
+    const color = colorAttr ? parseInt(colorAttr.replace('#', '0x'), 16) : 0xffaa00;
+
     const material = new THREE.MeshPhongMaterial({
-      color: 0xffaa00, // Orange clair style slicer
+      color: color,
       specular: 0x222222,
       shininess: 30,
       flatShading: true, // Show triangle facets for better relief visibility
@@ -635,6 +642,16 @@ class ModelViewer extends HTMLElement {
       dimZ.textContent = `${dims.z.toFixed(1)} mm`;
       info.style.display = 'block';
     }
+  }
+
+  updateMeshColor(hexColor) {
+    if (!this.mesh || !this.mesh.material) {
+      return;
+    }
+
+    // Convert hex color string to THREE.Color
+    const color = hexColor ? parseInt(hexColor.replace('#', '0x'), 16) : 0xffaa00;
+    this.mesh.material.color.setHex(color);
   }
 
   cleanup() {

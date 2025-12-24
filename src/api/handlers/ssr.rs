@@ -49,7 +49,7 @@ pub async fn index_page(
 
     // Serialize materials to JSON for embedding in HTML
     let materials_json = serde_json::to_string(&materials)
-        .map_err(|e| AppError::Internal(format!("Failed to serialize materials: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Failed to serialize materials: {e}")))?;
 
     // Build template context
     let mut context = Context::new();
@@ -59,7 +59,7 @@ pub async fn index_page(
 
     // Render template
     let html = render_template("index.html", &context)
-        .map_err(|e| AppError::Internal(format!("Template rendering failed: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Template rendering failed: {e}")))?;
 
     tracing::info!("SSR rendered index page with session: {}", session.id);
 
@@ -101,7 +101,7 @@ pub async fn admin_page(
         let admin_materials: Vec<AdminMaterialResponse> =
             materials.into_iter().map(Into::into).collect();
         let materials_json = serde_json::to_string(&admin_materials)
-            .map_err(|e| AppError::Internal(format!("Failed to serialize materials: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Failed to serialize materials: {e}")))?;
 
         // Fetch pricing history
         let entries = persistence::admin::get_pricing_history(&state.pool).await?;
@@ -124,7 +124,7 @@ pub async fn admin_page(
             .collect();
 
         let pricing_history_json = serde_json::to_string(&pricing_history)
-            .map_err(|e| AppError::Internal(format!("Failed to serialize history: {}", e)))?;
+            .map_err(|e| AppError::Internal(format!("Failed to serialize history: {e}")))?;
 
         context.insert("authenticated", &true);
         context.insert("materials", &admin_materials);
@@ -140,7 +140,7 @@ pub async fn admin_page(
     }
 
     let html = render_template("admin.html", &context)
-        .map_err(|e| AppError::Internal(format!("Template rendering failed: {}", e)))?;
+        .map_err(|e| AppError::Internal(format!("Template rendering failed: {e}")))?;
 
     tracing::info!(
         "SSR rendered admin page (authenticated: {})",

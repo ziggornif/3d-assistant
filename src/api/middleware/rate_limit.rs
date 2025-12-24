@@ -47,11 +47,6 @@ impl RateLimitLayer {
 
         Self { limiter }
     }
-
-    #[allow(dead_code)]
-    pub fn default() -> Self {
-        Self::new(RateLimitConfig::default())
-    }
 }
 
 impl<S> Layer<S> for RateLimitLayer {
@@ -120,17 +115,6 @@ pub fn create_rate_limiter() -> RateLimitLayer {
     let config = RateLimitConfig {
         requests_per_second: 100, // 100 requests per second
         burst_size: 500,          // Allow burst of 500 requests (for dev/test scenarios)
-    };
-
-    RateLimitLayer::new(config)
-}
-
-/// Create a stricter rate limiter for file uploads
-#[allow(dead_code)]
-pub fn create_upload_rate_limiter() -> RateLimitLayer {
-    let config = RateLimitConfig {
-        requests_per_second: 2, // 2 uploads per second
-        burst_size: 10,         // Allow burst of 10 uploads
     };
 
     RateLimitLayer::new(config)
