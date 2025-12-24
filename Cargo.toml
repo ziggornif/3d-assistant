@@ -36,6 +36,12 @@ thiserror = "2.0.17"
 anyhow = "1.0.100"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }
+
+# OpenTelemetry
+opentelemetry = "0.22"
+opentelemetry-otlp = { version = "0.15", features = ["grpc-tonic", "metrics", "logs"] }
+opentelemetry_sdk = { version = "0.22", features = ["rt-tokio", "metrics", "logs"] }
+tracing-opentelemetry = "0.23"
 dotenvy = "0.15.7"
 rust_decimal = { version = "1.39.0", features = ["serde"] }
 futures-util = "0.3.31"

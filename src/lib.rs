@@ -9,4 +9,5 @@ pub mod db;
 pub mod integrations;
 pub mod mcp;
 pub mod models;
+pub mod observability;
 pub mod persistence;

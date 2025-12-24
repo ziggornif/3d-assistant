@@ -5,27 +5,47 @@ mod db;
 mod integrations;
 mod mcp;
 mod models;
+mod observability;
 mod persistence;
 
 use anyhow::Result;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Initialize structured logging
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,tower_http=debug,axum::rejection=trace".into()),
-        )
-        .with(tracing_subscriber::fmt::layer().json())
-        .init();
+    // Load configuration first (needed for observability setup)
+    let config = config::Config::from_env()?;
+
+    // Validate configuration (fail fast in production)
+    config.validate()?;
+
+    // Initialize OpenTelemetry tracing
+    observability::init_tracing(
+        &config.otel_exporter_otlp_endpoint,
+        &config.otel_service_name,
+        &config.environment,
+    )?;
+
+    // Initialize metrics
+    let metrics = observability::init_metrics(
+        &config.otel_exporter_otlp_endpoint,
+        &config.otel_service_name,
+        &config.environment,
+    )?;
+
+    // Initialize structured logging with OpenTelemetry integration
+    observability::init_logging(config.is_production())?;
 
     tracing::info!("Starting 3D Quote Service");
-
-    // Load configuration
-    let config = config::Config::from_env()?;
-    tracing::info!("Configuration loaded: {}:{}", config.host, config.port);
+    tracing::info!(
+        "Configuration loaded: {}:{} (environment: {})",
+        config.host,
+        config.port,
+        config.environment
+    );
+    tracing::info!(
+        "OpenTelemetry initialized: endpoint={}",
+        config.otel_exporter_otlp_endpoint
+    );
 
     // Ensure upload directory exists
     std::fs::create_dir_all(&config.upload_dir)?;
@@ -74,6 +94,10 @@ async fn main() -> Result<()> {
     tracing::info!("Server listening on {}", addr);
 
     axum::serve(listener, app).await?;
+
+    // Graceful shutdown: flush telemetry before exit
+    tracing::info!("Shutting down gracefully");
+    observability::shutdown_tracing();
 
     Ok(())
 }
