@@ -5,6 +5,7 @@ release/
 *.rs.bk
 *.rlib
 *.pdb
+.cargo/
 
 # Node.js/Frontend
 node_modules/
@@ -44,6 +45,10 @@ Thumbs.db
 coverage/
 *.lcov
 htmlcov/
+*.profraw
+*.profdata
+lcov.info
+tarpaulin-report.html
 
 # Playwright
 /test-results/
@@ -59,3 +64,7 @@ temp/
 
 # Documentation build
 docs/_build/
+
+# Cargo tools cache
+.cargo-audit-cache/
+audit.toml.lock
