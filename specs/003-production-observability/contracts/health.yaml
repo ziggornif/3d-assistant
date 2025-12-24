@@ -1,0 +1,132 @@
+openapi: 3.0.3
+info:
+  title: Health Check Endpoints
+  description: Kubernetes-style health check endpoints for liveness and readiness probes
+  version: 1.0.0
+  contact:
+    name: 3D Assistant Team
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://api.example.com
+    description: Production
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      description: |
+        Simple health check that returns 200 if the service process is running.
+        This endpoint performs no dependency checks and should respond quickly.
+        Used by container orchestrators (Kubernetes, Docker) to determine if the
+        container should be restarted.
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+        '500':
+          description: Service is experiencing internal errors (rare)
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Internal Server Error
+
+  /ready:
+    get:
+      summary: Readiness probe
+      description: |
+        Comprehensive readiness check that validates all service dependencies
+        are healthy and the service can handle requests. Returns 200 if all
+        checks pass, 503 if any check fails. Used by load balancers to determine
+        if traffic should be routed to this instance.
+      operationId: readinessCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is ready to handle requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              examples:
+                healthy:
+                  summary: All checks passing
+                  value:
+                    status: healthy
+                    checks:
+                      - component: database
+                        status: up
+                        message: null
+                      - component: filesystem
+                        status: up
+                        message: null
+        '503':
+          description: Service is not ready (one or more checks failed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+              examples:
+                unhealthy:
+                  summary: Database check failing
+                  value:
+                    status: unhealthy
+                    checks:
+                      - component: database
+                        status: down
+                        message: "Connection refused: ECONNREFUSED 127.0.0.1:5432"
+                      - component: filesystem
+                        status: up
+                        message: null
+
+components:
+  schemas:
+    ReadinessResponse:
+      type: object
+      required:
+        - status
+        - checks
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+          description: Overall health status (healthy if all checks pass)
+        checks:
+          type: array
+          description: Individual component health checks
+          items:
+            $ref: '#/components/schemas/HealthCheck'
+
+    HealthCheck:
+      type: object
+      required:
+        - component
+        - status
+      properties:
+        component:
+          type: string
+          enum: [database, filesystem]
+          description: Component being checked
+        status:
+          type: string
+          enum: [up, down]
+          description: Component status
+        message:
+          type: string
+          nullable: true
+          description: Error message if status is 'down', null otherwise
+          example: "Connection timeout after 5s"
+
+tags:
+  - name: Health
+    description: Service health and readiness checks
