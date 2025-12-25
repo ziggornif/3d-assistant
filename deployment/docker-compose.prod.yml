@@ -1,0 +1,236 @@
+# Production Docker Compose configuration
+#
+# This stack includes:
+# - PostgreSQL database
+# - 3D Quote Service application
+# - SigNoz observability stack (optional, can be run separately)
+#
+# Usage:
+#   # With observability stack:
+#   docker-compose -f deployment/docker-compose.prod.yml up -d
+#
+#   # Without observability (app + db only):
+#   docker-compose -f deployment/docker-compose.prod.yml up -d postgres app
+#
+# Environment variables should be set via .env file or docker-compose override
+
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: quote-service-postgres
+    environment:
+      POSTGRES_DB: quotes
+      POSTGRES_USER: ${POSTGRES_USER:-quoteuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quoteuser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # 3D Quote Service application
+  app:
+    image: 3d-quote-service:latest
+    container_name: quote-service-app
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      # Database
+      DATABASE_URL: postgres://${POSTGRES_USER:-quoteuser}:${POSTGRES_PASSWORD}@postgres:5432/quotes
+
+      # Server
+      HOST: 0.0.0.0
+      PORT: 8000
+      ENVIRONMENT: production
+
+      # File upload
+      MAX_FILE_SIZE_MB: ${MAX_FILE_SIZE_MB:-50}
+      UPLOAD_DIR: /app/uploads
+
+      # Session
+      SESSION_EXPIRY_HOURS: ${SESSION_EXPIRY_HOURS:-24}
+
+      # Security
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?ADMIN_TOKEN must be set}
+      MCP_TOKEN: ${MCP_TOKEN:?MCP_TOKEN must be set}
+
+      # OpenTelemetry
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://otel-collector:4317}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-quote-service}
+
+      # Directories
+      STATIC_DIR: /app/static
+      TEMPLATE_DIR: /app/templates
+    volumes:
+      - upload-data:/app/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+      - signoz
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ClickHouse database for telemetry (optional, part of observability stack)
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.11-alpine
+    container_name: signoz-clickhouse
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=signoz
+    ports:
+      - "9000:9000"
+      - "8123:8123"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - signoz
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    profiles:
+      - observability
+
+  # OpenTelemetry Collector (optional, part of observability stack)
+  otel-collector:
+    image: signoz/signoz-otel-collector:0.88.11
+    container_name: signoz-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yaml
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=otel-collector,service.version=0.88.11
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    networks:
+      - signoz
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    profiles:
+      - observability
+
+  # SigNoz Query Service (optional, part of observability stack)
+  query-service:
+    image: signoz/query-service:0.38.0
+    container_name: signoz-query-service
+    command: ["-config=/root/config/prometheus.yml"]
+    volumes:
+      - ./signoz-query-service-config.yml:/root/config/prometheus.yml
+    environment:
+      - ClickHouseUrl=tcp://clickhouse:9000
+      - STORAGE=clickhouse
+      - GODEBUG=netdns=go
+      - TELEMETRY_ENABLED=true
+      - DEPLOYMENT_TYPE=docker-standalone-amd
+    ports:
+      - "8080:8080"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - signoz
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    profiles:
+      - observability
+
+  # SigNoz Frontend (optional, part of observability stack)
+  frontend:
+    image: signoz/frontend:0.38.0
+    container_name: signoz-frontend
+    environment:
+      - FRONTEND_API_ENDPOINT=http://query-service:8080
+    ports:
+      - "3301:3301"
+    depends_on:
+      query-service:
+        condition: service_healthy
+    networks:
+      - signoz
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    profiles:
+      - observability
+
+volumes:
+  postgres-data:
+    name: quote-service-postgres-data
+  upload-data:
+    name: quote-service-uploads
+  clickhouse-data:
+    name: signoz-clickhouse-data
+
+networks:
+  app-network:
+    name: quote-service-network
+    driver: bridge
+  signoz:
+    name: signoz-network
+    driver: bridge

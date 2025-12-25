@@ -10,6 +10,7 @@ use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
 use crate::api::handlers::{admin, materials, quote, ssr, upload};
+use crate::api::health;
 use crate::api::middleware::{
     admin_auth, create_login_rate_limiter, create_rate_limiter, mcp_auth, security_headers,
 };
@@ -105,17 +106,13 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
         .nest_service("/uploads", ServeDir::new(upload_dir))
         // Serve static frontend assets (CSS, JS, images)
         .nest_service("/static", ServeDir::new(static_dir))
-        // Health check
-        .route("/health", get(health_check))
+        // Health check endpoints (Kubernetes-style liveness and readiness probes)
+        .route("/health", get(health::health))
+        .route("/ready", get(health::ready))
         .layer(DefaultBodyLimit::max(100 * 1024 * 1024)) // 100MB limit for file uploads
         .layer(create_rate_limiter()) // Global rate limiting: 20 req/s, burst 100
         .layer(middleware::from_fn_with_state(state.clone(), security_headers)) // Security headers
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state)
-}
-
-/// Health check endpoint
-async fn health_check() -> &'static str {
-    "OK"
 }

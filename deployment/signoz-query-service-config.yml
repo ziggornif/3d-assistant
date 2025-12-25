@@ -1,0 +1,32 @@
+# SigNoz Query Service configuration
+
+# Global settings
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Query service configuration
+query:
+  max_samples: 50000000
+  timeout: 2m
+  lookback_delta: 5m
+
+# ClickHouse configuration
+clickhouse:
+  tcp_endpoint: clickhouse:9000
+  http_endpoint: http://clickhouse:8123
+  database: signoz
+  username: default
+  password: ""
+  read_timeout: 30s
+  write_timeout: 30s
+  max_open_connections: 10
+  max_idle_connections: 5
+
+# Telemetry settings
+telemetry:
+  enabled: true
+  metrics:
+    enabled: true
+  traces:
+    enabled: true

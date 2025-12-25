@@ -1,0 +1,11 @@
+# Environment files with secrets
+.env
+.env.production
+.env.local
+
+# Docker Compose overrides (may contain secrets)
+docker-compose.override.yml
+
+# Generated data
+data/
+volumes/

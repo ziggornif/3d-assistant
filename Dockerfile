@@ -67,9 +67,9 @@ ENV RUST_LOG=info
 # Expose port
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/api/materials || exit 1
+# Health check (readiness probe with database and filesystem checks)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:3000/ready || exit 1
 
 # Run the application
 CMD ["/app/quote-service"]

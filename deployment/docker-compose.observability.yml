@@ -1,0 +1,100 @@
+# Docker Compose for local observability stack (SigNoz)
+#
+# This stack provides a complete observability solution for local development:
+# - SigNoz: All-in-one observability platform (traces, metrics, logs)
+# - ClickHouse: Time-series database for telemetry data
+# - OTEL Collector: OpenTelemetry collector for receiving and processing telemetry
+#
+# Usage:
+#   docker-compose -f deployment/docker-compose.observability.yml up -d
+#
+# Access SigNoz UI: http://localhost:3301
+
+version: '3.8'
+
+services:
+  # ClickHouse database for telemetry data storage
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.11-alpine
+    container_name: signoz-clickhouse
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=signoz
+    ports:
+      - "9000:9000"  # ClickHouse native protocol
+      - "8123:8123"  # ClickHouse HTTP interface
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - signoz
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: signoz/signoz-otel-collector:0.88.11
+    container_name: signoz-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yaml
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=otel-collector,service.version=0.88.11
+    ports:
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    networks:
+      - signoz
+
+  # SigNoz Query Service
+  query-service:
+    image: signoz/query-service:0.38.0
+    container_name: signoz-query-service
+    command: ["-config=/root/config/prometheus.yml"]
+    volumes:
+      - ./signoz-query-service-config.yml:/root/config/prometheus.yml
+    environment:
+      - ClickHouseUrl=tcp://clickhouse:9000
+      - STORAGE=clickhouse
+      - GODEBUG=netdns=go
+      - TELEMETRY_ENABLED=true
+      - DEPLOYMENT_TYPE=docker-standalone-amd
+    ports:
+      - "8080:8080"  # Query service HTTP
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - signoz
+
+  # SigNoz Frontend UI
+  frontend:
+    image: signoz/frontend:0.38.0
+    container_name: signoz-frontend
+    environment:
+      - FRONTEND_API_ENDPOINT=http://query-service:8080
+    ports:
+      - "3301:3301"  # SigNoz UI
+    depends_on:
+      query-service:
+        condition: service_healthy
+    networks:
+      - signoz
+
+volumes:
+  clickhouse-data:
+    name: signoz-clickhouse-data
+
+networks:
+  signoz:
+    name: signoz-network
+    driver: bridge
