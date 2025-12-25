@@ -4,6 +4,7 @@ Service de devis instantané pour impression 3D. Téléchargez vos fichiers STL/
 
 ## Fonctionnalités
 
+### Métier
 - **Upload de fichiers 3D** : Support STL et 3MF
 - **Visualisation 3D** : Prévisualisation interactive avec Three.js (rotation, zoom, pan)
 - **Sélection de matériaux** : PLA, ABS, PETG, Résine avec prix personnalisés
@@ -11,25 +12,53 @@ Service de devis instantané pour impression 3D. Téléchargez vos fichiers STL/
 - **Interface admin** : Gestion des prix et matériaux sans code
 - **MCP (Model Context Protocol)** : API programmatique pour IA et outils d'automatisation
 - **Nettoyage automatique** : Suppression des sessions expirées et fichiers uploadés
+
+### Production-Ready
+- **OpenTelemetry Observability** : Traces distribuées, métriques métier/techniques, logs structurés
+- **Health Checks** : Liveness (`/health`) et readiness (`/ready`) pour Kubernetes/Docker
+- **Configuration Production** : Variables d'environnement, validation fail-fast, secrets sécurisés
+- **Docker Compose** : Stack complète avec PostgreSQL, application et observabilité (SigNoz)
+- **Documentation Déploiement** : Guides complets VPS, Docker, sécurité, troubleshooting
+
+### Qualité & Accessibilité
 - **Accessibilité** : Conformité RGAA/WCAG 2.1 AA
+- **Sécurité** : Rate limiting, CORS, validation stricte, protection XSS/SQL injection
+- **Tests** : 46+ tests E2E Playwright, tests unitaires Rust
 
 ## Architecture
 
 ```
 3d-assistant/
-├── src/               # Code Rust (API + SSR)
-│   ├── api/          # Routes et handlers
-│   ├── models/       # Entités (Material, Quote, Session)
-│   └── services/     # Logique métier (pricing, file processing, templates)
-├── static/           # Assets web (JS + CSS)
+├── src/                    # Code Rust (API + SSR)
+│   ├── api/               # Routes et handlers
+│   │   └── health.rs      # Health checks (/health, /ready)
+│   ├── models/            # Entités (Material, Quote, Session)
+│   ├── business/          # Logique métier (pricing, file processing, templates)
+│   ├── observability/     # OpenTelemetry (traces, metrics, logs)
+│   ├── db/                # Database (migrations, seed)
+│   ├── mcp/               # Model Context Protocol
+│   └── config.rs          # Configuration avec validation
+├── static/                # Assets web (JS + CSS)
 │   ├── js/
-│   │   ├── components/  # Web Components (file-uploader, model-viewer, etc.)
-│   │   ├── services/    # API client, session manager
-│   │   └── utils/       # Formatters, accessibilité
-│   └── css/          # Styles (main, accessibility, components)
-├── templates/        # Templates SSR (Tera)
-├── e2e/              # Tests E2E Playwright
-└── uploads/          # Fichiers uploadés
+│   │   ├── components/   # Web Components (file-uploader, model-viewer, etc.)
+│   │   ├── services/     # API client, session manager
+│   │   └── utils/        # Formatters, accessibilité
+│   └── css/              # Styles (main, accessibility, components)
+├── templates/             # Templates SSR (Tera)
+├── deployment/            # Déploiement production
+│   ├── docker-compose.observability.yml  # Stack SigNoz pour dev
+│   ├── docker-compose.prod.yml           # Production complète
+│   └── otel-collector-config.yml         # Config OpenTelemetry
+├── docs/
+│   ├── deployment/        # Guides de déploiement
+│   │   ├── docker-compose.md  # Déploiement Docker
+│   │   ├── vps.md             # Déploiement VPS/VM
+│   │   ├── security.md        # Checklist sécurité
+│   │   └── troubleshooting.md # Dépannage
+│   └── api/               # Documentation API
+│       └── health-checks.md   # Health checks K8s
+├── e2e/                   # Tests E2E Playwright
+└── uploads/               # Fichiers uploadés
 ```
 
 ## Prérequis
@@ -106,10 +135,11 @@ Le serveur démarre sur `http://127.0.0.1:3000`.
 **6. Vérifier l'installation**
 
 - Interface utilisateur: http://127.0.0.1:3000/
-- Interface admin: http://127.0.0.1:3000/admin.html (utilisez votre ADMIN_TOKEN)
+- Interface admin: http://127.0.0.1:3000/admin (utilisez votre ADMIN_TOKEN)
 - Health check: http://127.0.0.1:3000/health
+- Readiness check: http://127.0.0.1:3000/ready
 
-### Méthode 2: Docker Compose (production-like)
+### Méthode 2: Docker Compose (production)
 
 **Prérequis**: Docker et Docker Compose installés
 
@@ -118,23 +148,44 @@ Le serveur démarre sur `http://127.0.0.1:3000`.
 git clone https://github.com/ziggornif/3d-assistant.git
 cd 3d-assistant
 
-# 2. Configurer les variables d'environnement
-cp .env.example .env
-# ⚠️ Éditez .env et changez ADMIN_TOKEN et MCP_TOKEN
+# 2. Configurer l'environnement production
+cp deployment/.env.production.example deployment/.env
+# ⚠️ IMPORTANT: Éditez deployment/.env et changez tous les secrets
 
-# 3. Démarrer les services (PostgreSQL + Application)
-docker compose up -d
+# 3. Démarrer la stack complète (app + db + observabilité)
+docker-compose -f deployment/docker-compose.prod.yml --profile observability up -d
 
-# 4. Vérifier les logs
-docker compose logs -f
+# OU démarrer sans observabilité (plus léger)
+docker-compose -f deployment/docker-compose.prod.yml up -d postgres app
 
-# 5. Arrêter les services
-docker compose down
+# 4. Vérifier le statut
+docker-compose -f deployment/docker-compose.prod.yml ps
+curl http://localhost:8000/ready
+
+# 5. Accéder aux services
+# - Application: http://localhost:8000
+# - SigNoz (observabilité): http://localhost:3301
+
+# 6. Voir les logs
+docker-compose -f deployment/docker-compose.prod.yml logs -f app
+
+# 7. Arrêter les services
+docker-compose -f deployment/docker-compose.prod.yml down
 ```
 
-L'application sera accessible sur `http://localhost:3000`.
+**Stack d'observabilité locale (développement)**:
 
-**Note**: Le `docker-compose.yml` utilise des mots de passe de démonstration pour PostgreSQL. Changez-les en production.
+```bash
+# Démarrer SigNoz seulement (sans l'app)
+docker-compose -f deployment/docker-compose.observability.yml up -d
+
+# Lancer l'app localement avec OTEL
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317 cargo run
+
+# SigNoz UI: http://localhost:3301
+```
+
+**Documentation complète**: Voir [docs/deployment/](docs/deployment/README.md)
 
 ### 3. Tests
 
@@ -178,6 +229,9 @@ MCP_TOKEN=your-secure-mcp-token-here
 #### Optionnelles (avec valeurs par défaut)
 
 ```env
+# Environnement
+ENVIRONMENT=development     # Environnement: development ou production
+
 # Serveur
 HOST=127.0.0.1              # Adresse d'écoute (défaut: 127.0.0.1)
 PORT=3000                   # Port du serveur (défaut: 3000)
@@ -188,6 +242,10 @@ UPLOAD_DIR=./uploads        # Répertoire de stockage (défaut: ./uploads)
 
 # Gestion des sessions
 SESSION_EXPIRY_HOURS=24     # Durée de vie des sessions (défaut: 24h)
+
+# OpenTelemetry (observabilité)
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317  # Endpoint OTLP collector
+OTEL_SERVICE_NAME=quote-service                    # Nom du service
 
 # Logging (optionnel)
 RUST_LOG=info              # Niveau de logs: error, warn, info, debug, trace
@@ -202,13 +260,63 @@ cp .env.example .env
 # Éditez .env et changez ADMIN_TOKEN et MCP_TOKEN
 ```
 
-### Docker Compose
+## Déploiement Production
 
-```bash
-docker compose up -d
-```
+### Options de déploiement
 
-Cela démarre PostgreSQL + l'application avec les variables d'environnement configurées.
+1. **Docker Compose** (recommandé) - [Guide complet](docs/deployment/docker-compose.md)
+   - Stack complète avec PostgreSQL et observabilité
+   - Configuration via variables d'environnement
+   - Health checks et resource limits
+
+2. **VPS/VM Ubuntu** - [Guide complet](docs/deployment/vps.md)
+   - Déploiement traditionnel avec systemd
+   - Nginx reverse proxy avec SSL/TLS
+   - Backups automatisés
+
+3. **Kubernetes** - Documentation à venir
+   - Manifests avec liveness/readiness probes
+   - Auto-scaling basé sur les métriques
+
+### Checklist de sécurité
+
+Avant de déployer en production:
+- ✅ Tokens changés (`ADMIN_TOKEN`, `MCP_TOKEN`)
+- ✅ Base de données PostgreSQL sécurisée
+- ✅ HTTPS activé (Let's Encrypt)
+- ✅ Firewall configuré
+- ✅ Backups automatisés configurés
+- ✅ Monitoring activé (SigNoz ou autre)
+
+**Documentation complète**: [docs/deployment/security.md](docs/deployment/security.md)
+
+## Observabilité
+
+L'application inclut une observabilité complète via OpenTelemetry:
+
+### Traces distribuées
+- Toutes les requêtes HTTP automatiquement tracées
+- Corrélation entre logs et traces
+- Visualisation dans SigNoz
+
+### Métriques
+**Business**:
+- `quotes_generated_total` - Nombre de devis générés
+- `models_uploaded_total` - Modèles uploadés
+- `quote_calculation_duration_ms` - Temps de calcul
+- `file_upload_size_bytes` - Taille des fichiers
+
+**Techniques**:
+- `http_request_duration_ms` - Latence des requêtes
+- `db_connections_active` - Connexions DB actives
+- `http_requests_total` - Requêtes totales
+
+### Logs structurés
+- Format JSON en production (avec trace_id)
+- Format pretty en développement
+- Niveaux configurables via `RUST_LOG`
+
+**Accéder à SigNoz**: http://localhost:3301 (après `docker-compose up`)
 
 ## API Endpoints
 
@@ -231,6 +339,12 @@ Cela démarre PostgreSQL + l'application avec les variables d'environnement conf
 - `PATCH /api/admin/materials/{id}` - Mettre à jour un matériau
 - `GET /api/admin/pricing-history` - Historique des changements de prix
 - `POST /api/admin/cleanup` - Nettoyer les sessions expirées et fichiers uploadés
+
+### Health Checks (Kubernetes/Docker)
+- `GET /health` - Liveness probe (service est-il up?)
+- `GET /ready` - Readiness probe (service peut-il traiter des requêtes?)
+
+**Documentation**: [docs/api/health-checks.md](docs/api/health-checks.md)
 
 ### MCP (Model Context Protocol)
 - `POST /mcp` - Endpoint MCP pour accès programmatique
@@ -311,13 +425,27 @@ Chaque composant (file-uploader, model-viewer, material-selector, quote-summary)
 
 ## Roadmap
 
-- [x] Support fichiers 3MF
-- [x] MCP (Model Context Protocol) pour permettre à un modèle IA de faire un devis sans utiliser le front
-- [ ] Système de webhooks pour exporter les devis vers des plateformes externes (Notion, Obsidian, Odoo, etc.)
+### ✅ Réalisé
+- [x] Support fichiers STL et 3MF
+- [x] MCP (Model Context Protocol) pour IA
+- [x] OpenTelemetry observability (traces, metrics, logs)
+- [x] Health checks Kubernetes (liveness/readiness)
+- [x] Documentation déploiement complète
+- [x] Docker Compose production-ready
+- [x] Configuration production avec validation
+- [x] Nettoyage automatique sessions
+
+### 🚧 En cours
+- [ ] Phase 4: Instrumentation métier complète (traces custom sur operations)
+
+### 📋 Planifié
 - [ ] Export PDF des devis
+- [ ] Système de webhooks (Notion, Obsidian, Odoo)
 - [ ] Notifications email
 - [ ] Multi-langue (i18n)
 - [ ] OAuth/JWT pour admin
+- [ ] Kubernetes manifests et Helm charts
+- [ ] Dashboards Grafana pré-configurés
 
 ## Licence
 

@@ -185,7 +185,10 @@ mod tests {
     #[tokio::test]
     async fn test_filesystem_check_fails_on_nonexistent_dir() {
         // Set upload dir to a directory that doesn't exist
-        std::env::set_var("UPLOAD_DIR", "/nonexistent/directory");
+        // SAFETY: This is safe in tests as we're not reading from other threads
+        unsafe {
+            std::env::set_var("UPLOAD_DIR", "/nonexistent/directory");
+        }
 
         let result = check_filesystem().await;
         assert_eq!(result.status, "error");
