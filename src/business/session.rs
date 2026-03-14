@@ -28,13 +28,33 @@ impl SessionService {
         }
     }
 
-    /// Create a new session
+    /// Create a new anonymous (demo) session
     pub async fn create_session(&self) -> Result<QuoteSession, AppError> {
         let session = QuoteSession::new();
 
         persistence::sessions::create(
             &self.pool,
             &session.id,
+            session.created_at,
+            session.expires_at,
+            &session.status,
+        )
+        .await?;
+
+        Ok(session)
+    }
+
+    /// Create a new authenticated session linked to a user
+    pub async fn create_authenticated_session(
+        &self,
+        user_id: &str,
+    ) -> Result<QuoteSession, AppError> {
+        let session = QuoteSession::new_authenticated(user_id.to_string());
+
+        persistence::sessions::create_authenticated(
+            &self.pool,
+            &session.id,
+            user_id,
             session.created_at,
             session.expires_at,
             &session.status,

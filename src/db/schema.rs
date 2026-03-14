@@ -8,3 +8,5 @@ pub const QUOTE_SESSIONS_TABLE: &str = "quote_sessions";
 pub const UPLOADED_MODELS_TABLE: &str = "uploaded_models";
 pub const QUOTES_TABLE: &str = "quotes";
 pub const PRICING_HISTORY_TABLE: &str = "pricing_history";
+pub const USERS_TABLE: &str = "users";
+pub const USER_SESSIONS_TABLE: &str = "user_sessions";

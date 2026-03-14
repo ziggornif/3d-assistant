@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion - 3D Quote Service{% endblock %}
+
+{% block body %}
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+    <header role="banner">
+        <div class="header-content">
+            <div>
+                <h1>Connexion</h1>
+            </div>
+            <nav class="header-nav" aria-label="Navigation principale">
+                <a href="/">Accueil</a>
+                <a href="/register" class="admin-link">S'inscrire</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main-content" role="main">
+        <section id="login-section">
+            <h2>Se connecter</h2>
+            <div id="login-error" class="error-message" role="alert" hidden></div>
+            <div id="login-pending" hidden style="background: rgba(37,99,235,0.08); padding: 0.75rem; border-radius: 0.5rem; text-align: center; margin-bottom: 1rem;"></div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required autocomplete="email" placeholder="votre@email.com" />
+                </div>
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn-primary" style="width:100%;">Se connecter</button>
+            </form>
+            <p style="text-align:center; margin-top:1rem;">
+                Pas encore de compte ? <a href="/register">S'inscrire</a>
+            </p>
+        </section>
+    </main>
+
+    <footer role="contentinfo">
+        <p>&copy; 2025 Service de Devis Impression 3D</p>
+    </footer>
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/css/admin.css">
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorEl = document.getElementById('login-error');
+            const pendingEl = document.getElementById('login-pending');
+            errorEl.hidden = true;
+            pendingEl.hidden = true;
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = 'Connexion en cours...';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    const data = await response.json();
+                    const msg = data.error?.message || 'Erreur de connexion';
+                    if (response.status === 403 && msg.includes('attente')) {
+                        pendingEl.textContent = msg;
+                        pendingEl.hidden = false;
+                    } else {
+                        errorEl.textContent = msg;
+                        errorEl.hidden = false;
+                    }
+                }
+            } catch (err) {
+                errorEl.textContent = 'Erreur de connexion au serveur';
+                errorEl.hidden = false;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Se connecter';
+            }
+        });
+    </script>
+{% endblock %}

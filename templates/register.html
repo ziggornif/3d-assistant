@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Inscription - 3D Quote Service{% endblock %}
+
+{% block body %}
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+    <header role="banner">
+        <div class="header-content">
+            <div>
+                <h1>Inscription</h1>
+            </div>
+            <nav class="header-nav" aria-label="Navigation principale">
+                <a href="/">Accueil</a>
+                <a href="/login" class="admin-link">Se connecter</a>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main-content" role="main">
+        <section id="login-section">
+            <div id="register-success" hidden style="text-align:center;">
+                <h2 style="color: var(--color-success);">Compte cree avec succes</h2>
+                <p>Un administrateur doit valider votre compte avant que vous puissiez vous connecter.</p>
+                <a href="/" class="btn-secondary" style="display:inline-block; margin-top:1rem; text-decoration:none;">Retour a l'accueil</a>
+            </div>
+            <div id="register-form-container">
+                <h2>Creer un compte</h2>
+                <div id="register-error" class="error-message" role="alert" hidden></div>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="display_name" class="required-field">Nom d'affichage</label>
+                        <input type="text" id="display_name" name="display_name" required autocomplete="name" placeholder="Jean Dupont" />
+                    </div>
+                    <div class="form-group">
+                        <label for="email" class="required-field">Email</label>
+                        <input type="email" id="email" name="email" required autocomplete="email" placeholder="votre@email.com" />
+                    </div>
+                    <div class="form-group">
+                        <label for="password" class="required-field">Mot de passe</label>
+                        <input type="password" id="password" name="password" required autocomplete="new-password" aria-describedby="password-hint" />
+                        <p id="password-hint" class="form-hint">8 caracteres minimum, 1 majuscule, 1 chiffre</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="password_confirm" class="required-field">Confirmer le mot de passe</label>
+                        <input type="password" id="password_confirm" name="password_confirm" required autocomplete="new-password" />
+                    </div>
+                    <button type="submit" class="btn-primary" style="width:100%;">Creer mon compte</button>
+                </form>
+                <p style="text-align:center; margin-top:1rem;">
+                    Deja inscrit ? <a href="/login">Se connecter</a>
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <footer role="contentinfo">
+        <p>&copy; 2025 Service de Devis Impression 3D</p>
+    </footer>
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/css/admin.css">
+    <link rel="stylesheet" href="/static/css/accessibility.css">
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errorEl = document.getElementById('register-error');
+            errorEl.hidden = true;
+
+            const display_name = document.getElementById('display_name').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const password_confirm = document.getElementById('password_confirm').value;
+
+            if (password !== password_confirm) {
+                errorEl.textContent = 'Les mots de passe ne correspondent pas';
+                errorEl.hidden = false;
+                return;
+            }
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.textContent = 'Creation en cours...';
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, display_name })
+                });
+
+                if (response.ok || response.status === 201) {
+                    document.getElementById('register-form-container').hidden = true;
+                    document.getElementById('register-success').hidden = false;
+                } else {
+                    const data = await response.json();
+                    errorEl.textContent = data.error?.message || 'Erreur lors de la creation du compte';
+                    errorEl.hidden = false;
+                }
+            } catch (err) {
+                errorEl.textContent = 'Erreur de connexion au serveur';
+                errorEl.hidden = false;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Creer mon compte';
+            }
+        });
+    </script>
+{% endblock %}

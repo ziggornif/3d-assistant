@@ -9,7 +9,7 @@ use tera::Context;
 use crate::api::handlers::admin::{AdminMaterialResponse, PricingHistoryEntry};
 use crate::api::middleware::AppError;
 use crate::api::routes::AppState;
-use crate::business::render_template;
+use crate::business::{AuthService, render_template};
 use crate::models::QuoteSession;
 use crate::persistence;
 
@@ -51,11 +51,26 @@ pub async fn index_page(
     let materials_json = serde_json::to_string(&materials)
         .map_err(|e| AppError::Internal(format!("Failed to serialize materials: {e}")))?;
 
+    // Check user authentication
+    let authenticated_user = check_user_auth(&state, &jar).await;
+    let is_demo_mode = authenticated_user.is_none();
+
     // Build template context
     let mut context = Context::new();
     context.insert("session_id", &session.id);
     context.insert("materials_json", &materials_json);
     context.insert("api_base", "");
+    context.insert("demo_mode", &is_demo_mode);
+
+    if let Some(ref user) = authenticated_user {
+        context.insert("authenticated_user", &true);
+        context.insert("user_display_name", &user.display_name);
+        context.insert("user_email", &user.email);
+    } else {
+        context.insert("authenticated_user", &false);
+        context.insert("user_display_name", &"");
+        context.insert("user_email", &"");
+    }
 
     // Render template
     let html = render_template("index.html", &context)
@@ -192,4 +207,58 @@ pub async fn admin_logout(jar: CookieJar) -> impl IntoResponse {
 
     tracing::info!("Admin logout");
     (jar.remove(cookie), Redirect::to("/admin"))
+}
+
+/// Render the login page
+pub async fn login_page() -> Result<Html<String>, AppError> {
+    let context = Context::new();
+    let html = render_template("login.html", &context)
+        .map_err(|e| AppError::Internal(format!("Template rendering failed: {e}")))?;
+
+    Ok(Html(html))
+}
+
+/// Render the register page
+pub async fn register_page() -> Result<Html<String>, AppError> {
+    let context = Context::new();
+    let html = render_template("register.html", &context)
+        .map_err(|e| AppError::Internal(format!("Template rendering failed: {e}")))?;
+
+    Ok(Html(html))
+}
+
+/// Render the my-quotes page (requires auth, redirects to login if not)
+pub async fn my_quotes_page(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> Result<axum::response::Response, AppError> {
+    let authenticated_user = check_user_auth(&state, &jar).await;
+
+    if authenticated_user.is_none() {
+        return Ok(Redirect::to("/login").into_response());
+    }
+
+    let user = authenticated_user.expect("User should be set");
+
+    let mut context = Context::new();
+    context.insert("authenticated_user", &true);
+    context.insert("user_display_name", &user.display_name);
+    context.insert("user_email", &user.email);
+    context.insert("user_id", &user.id);
+    context.insert("api_base", "");
+
+    let html = render_template("my-quotes.html", &context)
+        .map_err(|e| AppError::Internal(format!("Template rendering failed: {e}")))?;
+
+    Ok(Html(html).into_response())
+}
+
+/// Helper: check user authentication from cookie
+async fn check_user_auth(
+    state: &AppState,
+    jar: &CookieJar,
+) -> Option<crate::models::User> {
+    let cookie = jar.get("user_session")?;
+    let auth_service = AuthService::new(state.pool.clone());
+    auth_service.verify_session(cookie.value()).await.ok()
 }

@@ -96,7 +96,14 @@ pub async fn generate_quote(
 ) -> AppResult<Json<QuoteResponse>> {
     // Verify session exists
     let session_service = SessionService::new(state.pool.clone(), &state.config.upload_dir);
-    session_service.get_session(&session_id).await?;
+    let session = session_service.get_session(&session_id).await?;
+
+    // Block quote generation for anonymous sessions (demo mode)
+    if session.is_anonymous() {
+        return Err(AppError::Forbidden(
+            "Inscrivez-vous pour generer un devis".to_string(),
+        ));
+    }
 
     // Get all models with their materials
     let models = models::find_by_session(&state.pool, &session_id).await?;

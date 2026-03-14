@@ -9,7 +9,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
-use crate::api::handlers::{admin, materials, quote, ssr, upload};
+use crate::api::handlers::{admin, auth, materials, quote, ssr, upload, user_quotes};
 use crate::api::middleware::{
     admin_auth, create_login_rate_limiter, create_rate_limiter, mcp_auth, security_headers,
 };
@@ -42,12 +42,32 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
     Router::new()
         // SSR Pages (Server-Side Rendered)
         .route("/", get(ssr::index_page))
+        .route("/login", get(ssr::login_page))
+        .route("/register", get(ssr::register_page))
+        .route("/my-quotes", get(ssr::my_quotes_page))
         .route("/admin", get(ssr::admin_page))
         .route(
             "/admin/login",
             post(ssr::admin_login).layer(create_login_rate_limiter()),
         )
         .route("/admin/logout", post(ssr::admin_logout))
+        // Authentication API
+        .route(
+            "/api/auth/register",
+            post(auth::register).layer(create_login_rate_limiter()),
+        )
+        .route(
+            "/api/auth/login",
+            post(auth::login).layer(create_login_rate_limiter()),
+        )
+        .route("/api/auth/logout", post(auth::logout))
+        .route("/api/auth/me", get(auth::me))
+        // User quotes (authenticated)
+        .route("/api/users/me/quotes", get(user_quotes::list_my_quotes))
+        .route(
+            "/api/users/me/quotes/{quote_id}",
+            get(user_quotes::get_my_quote),
+        )
         // Session management
         .route("/api/sessions", post(upload::create_session))
         // File upload
@@ -88,6 +108,8 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
                 .route("/materials/{id}", patch(admin::update_material))
                 .route("/pricing-history", get(admin::get_pricing_history))
                 .route("/cleanup", post(admin::cleanup_expired_sessions))
+                .route("/users", get(admin::list_users))
+                .route("/users/{user_id}", patch(admin::update_user_status))
                 .layer(middleware::from_fn(admin_auth)),
         )
         // MCP (Model Context Protocol) endpoint with authentication

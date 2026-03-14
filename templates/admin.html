@@ -54,11 +54,30 @@
         <!-- Admin Panel -->
         <section id="admin-panel">
             <div class="admin-header">
-                <h2>Gestion des Matériaux</h2>
+                <h2>Administration</h2>
                 <form method="POST" action="/admin/logout" style="display: inline;">
-                    <button type="submit" id="logout-btn" class="btn-secondary">Déconnexion</button>
+                    <button type="submit" id="logout-btn" class="btn-secondary">Deconnexion</button>
                 </form>
             </div>
+
+            <!-- Account Management Section -->
+            <div class="admin-card">
+                <h3>Gestion des Comptes <span id="pending-count-badge" style="color: var(--color-warning); font-weight: normal; font-size: 0.875rem;"></span></h3>
+
+                <!-- Status filter tabs -->
+                <div id="account-filters" style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <button class="btn-small account-filter-btn active-filter" data-status="pending">En attente</button>
+                    <button class="btn-small account-filter-btn" data-status="active">Actifs</button>
+                    <button class="btn-small account-filter-btn" data-status="disabled">Desactives</button>
+                    <button class="btn-small account-filter-btn" data-status="">Tous</button>
+                </div>
+
+                <div id="accounts-table" class="materials-table">
+                    <div style="text-align:center; padding:1rem; color: var(--color-text-light);">Chargement des comptes...</div>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 2rem;">Gestion des Materiaux</h2>
 
             <!-- Add Material Form -->
             <div class="admin-card">
@@ -222,4 +241,154 @@
 
 {% block scripts %}
     <script type="module" src="/static/js/admin/main.js"></script>
+    {% if authenticated %}
+    <script>
+        // Account management
+        (function() {
+            let currentFilter = 'pending';
+
+            const statusLabels = {
+                pending: 'En attente',
+                active: 'Actif',
+                disabled: 'Desactive',
+                rejected: 'Refuse'
+            };
+
+            const statusBadgeClass = {
+                pending: 'status-pending',
+                active: 'status-active',
+                disabled: 'status-disabled',
+                rejected: 'status-inactive'
+            };
+
+            function showNotification(message, type) {
+                const container = document.getElementById('notification-container');
+                if (!container) return;
+                const notif = document.createElement('div');
+                notif.className = `notification notification-${type}`;
+                notif.innerHTML = `<span>${message}</span><button class="notification-close" onclick="this.parentElement.remove()">&times;</button>`;
+                container.appendChild(notif);
+                setTimeout(() => { if (notif.parentElement) notif.remove(); }, 5000);
+            }
+
+            async function loadAccounts() {
+                const tableEl = document.getElementById('accounts-table');
+                const statusParam = currentFilter ? `?status=${currentFilter}` : '';
+
+                try {
+                    const response = await fetch(`/api/admin/users${statusParam}`);
+                    if (!response.ok) throw new Error('Failed to load accounts');
+                    const data = await response.json();
+
+                    // Update pending count badge
+                    if (currentFilter === '' || currentFilter === 'pending') {
+                        const pendingResp = await fetch('/api/admin/users?status=pending');
+                        if (pendingResp.ok) {
+                            const pendingData = await pendingResp.json();
+                            const badge = document.getElementById('pending-count-badge');
+                            if (badge && pendingData.total > 0) {
+                                badge.textContent = `(${pendingData.total} en attente)`;
+                            } else if (badge) {
+                                badge.textContent = '';
+                            }
+                        }
+                    }
+
+                    if (data.users.length === 0) {
+                        tableEl.innerHTML = '<p style="text-align:center; padding:1rem; color: var(--color-text-light);">Aucun compte a afficher</p>';
+                        return;
+                    }
+
+                    tableEl.innerHTML = `
+                        <table>
+                            <caption class="sr-only">Liste des comptes utilisateurs</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Nom</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Date d'inscription</th>
+                                    <th scope="col">Statut</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.users.map(user => `
+                                    <tr data-user-id="${user.id}">
+                                        <td>${escapeHtml(user.display_name)}</td>
+                                        <td>${escapeHtml(user.email)}</td>
+                                        <td>${user.created_at ? user.created_at.substring(0, 10) : ''}</td>
+                                        <td><span class="status-badge ${statusBadgeClass[user.status] || ''}">${statusLabels[user.status] || user.status}</span></td>
+                                        <td>${getActionButtons(user)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+
+                    // Bind action buttons
+                    tableEl.querySelectorAll('[data-action]').forEach(btn => {
+                        btn.addEventListener('click', () => updateUserStatus(btn.dataset.userId, btn.dataset.action, btn.dataset.userName));
+                    });
+                } catch (err) {
+                    tableEl.innerHTML = '<p style="text-align:center; padding:1rem; color: var(--color-error);">Erreur lors du chargement des comptes</p>';
+                }
+            }
+
+            function getActionButtons(user) {
+                switch (user.status) {
+                    case 'pending':
+                        return `<button class="btn-small btn-edit" data-action="active" data-user-id="${user.id}" data-user-name="${escapeHtml(user.display_name)}" aria-label="Valider le compte de ${escapeHtml(user.display_name)}">Valider</button>
+                                <button class="btn-small btn-toggle" data-action="rejected" data-user-id="${user.id}" data-user-name="${escapeHtml(user.display_name)}" aria-label="Refuser le compte de ${escapeHtml(user.display_name)}">Refuser</button>`;
+                    case 'active':
+                        return `<button class="btn-small btn-toggle" data-action="disabled" data-user-id="${user.id}" data-user-name="${escapeHtml(user.display_name)}" aria-label="Desactiver le compte de ${escapeHtml(user.display_name)}">Desactiver</button>`;
+                    case 'disabled':
+                        return `<button class="btn-small btn-edit" data-action="active" data-user-id="${user.id}" data-user-name="${escapeHtml(user.display_name)}" aria-label="Reactiver le compte de ${escapeHtml(user.display_name)}">Reactiver</button>`;
+                    default:
+                        return '';
+                }
+            }
+
+            async function updateUserStatus(userId, newStatus, userName) {
+                try {
+                    const response = await fetch(`/api/admin/users/${userId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to update');
+
+                    const messages = {
+                        active: `Compte de ${userName} valide avec succes`,
+                        rejected: `Compte de ${userName} refuse`,
+                        disabled: `Compte de ${userName} desactive`
+                    };
+                    showNotification(messages[newStatus] || 'Statut mis a jour', newStatus === 'active' ? 'success' : 'info');
+                    loadAccounts();
+                } catch (err) {
+                    showNotification('Erreur lors de la mise a jour du compte', 'error');
+                }
+            }
+
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text || '';
+                return div.innerHTML;
+            }
+
+            // Setup filter tabs
+            document.querySelectorAll('.account-filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.account-filter-btn').forEach(b => b.classList.remove('active-filter'));
+                    btn.classList.add('active-filter');
+                    currentFilter = btn.dataset.status;
+                    loadAccounts();
+                });
+            });
+
+            // Initial load
+            loadAccounts();
+        })();
+    </script>
+    {% endif %}
 {% endblock %}

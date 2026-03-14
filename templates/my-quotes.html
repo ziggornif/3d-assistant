@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Mes Devis - 3D Quote Service{% endblock %}
+
+{% block head_scripts %}
+    <script>
+        window.__SSR_DATA__ = {
+            apiBase: "{{ api_base }}",
+            authenticatedUser: true,
+            userId: "{{ user_id }}"
+        };
+    </script>
+{% endblock %}
+
+{% block body %}
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+    <header role="banner">
+        <div class="header-content">
+            <div>
+                <h1>Service de Devis Impression 3D</h1>
+            </div>
+            <nav class="header-nav" aria-label="Navigation principale">
+                <a href="/">Accueil</a>
+                <a href="/my-quotes" aria-current="page"><strong>Mes devis</strong></a>
+                <span style="color: var(--color-text-light);">{{ user_display_name }}</span>
+                <button id="logout-btn" class="btn-secondary" style="font-size: 0.875rem; padding: 0.25rem 0.75rem;">Deconnexion</button>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main-content" role="main">
+        <section>
+            <h2>Mes devis</h2>
+            <div id="quotes-loading" style="text-align:center; padding:2rem; color: var(--color-text-light);">
+                Chargement de vos devis...
+            </div>
+            <div id="quotes-empty" hidden style="text-align:center; padding:2rem;">
+                <p style="color: var(--color-text-light); margin-bottom:1rem;">Vous n'avez pas encore de devis.</p>
+                <a href="/" class="btn-primary" style="text-decoration:none; display:inline-block;">Creer un devis</a>
+            </div>
+            <div id="quotes-error" class="error-banner" hidden></div>
+            <div id="quotes-list" role="list"></div>
+        </section>
+    </main>
+
+    <footer role="contentinfo">
+        <p>&copy; 2025 Service de Devis Impression 3D</p>
+    </footer>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        });
+
+        // Load quotes
+        async function loadQuotes() {
+            const loadingEl = document.getElementById('quotes-loading');
+            const emptyEl = document.getElementById('quotes-empty');
+            const errorEl = document.getElementById('quotes-error');
+            const listEl = document.getElementById('quotes-list');
+
+            try {
+                const response = await fetch('/api/users/me/quotes');
+                if (!response.ok) {
+                    throw new Error('Failed to load quotes');
+                }
+
+                const data = await response.json();
+                loadingEl.hidden = true;
+
+                if (data.quotes.length === 0) {
+                    emptyEl.hidden = false;
+                    return;
+                }
+
+                listEl.innerHTML = data.quotes.map(q => `
+                    <div class="model-card" role="listitem" style="cursor:pointer;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <h3 style="color: var(--color-text);">Devis #${q.id.substring(0, 8)}</h3>
+                                <p style="font-size: 0.875rem; color: var(--color-text-light);">${q.created_at}</p>
+                                <p style="font-size: 0.875rem; color: var(--color-text-light);">${q.model_count} modele(s)</p>
+                            </div>
+                            <div style="text-align:right;">
+                                <p style="font-size: 1.25rem; font-weight: 700; color: var(--color-success);">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(q.total_price)}</p>
+                                <span class="status-badge status-active">${q.status}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                loadingEl.hidden = true;
+                errorEl.textContent = 'Erreur lors du chargement des devis. ';
+                const retryBtn = document.createElement('button');
+                retryBtn.textContent = 'Reessayer';
+                retryBtn.className = 'btn-secondary';
+                retryBtn.onclick = loadQuotes;
+                errorEl.appendChild(retryBtn);
+                errorEl.hidden = false;
+            }
+        }
+
+        loadQuotes();
+    </script>
+{% endblock %}
