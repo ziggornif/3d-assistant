@@ -106,8 +106,16 @@ pub async fn login(
         .max_age(time::Duration::days(30))
         .build();
 
+    // Remove anonymous quote session cookie to force creation of an authenticated one
+    let remove_session = Cookie::build(("session_id", ""))
+        .path("/")
+        .http_only(true)
+        .same_site(SameSite::Lax)
+        .max_age(time::Duration::seconds(0))
+        .build();
+
     Ok((
-        jar.add(cookie),
+        jar.add(cookie).remove(remove_session),
         Json(LoginResponse {
             user_id: user.id,
             email: user.email,

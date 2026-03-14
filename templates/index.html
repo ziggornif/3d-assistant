@@ -47,14 +47,14 @@
             </div>
             <nav class="header-nav" aria-label="Navigation principale">
                 {% if authenticated_user %}
-                    <a href="/my-quotes">Mes devis</a>
-                    <span style="color: var(--color-text-light);">{{ user_display_name }}</span>
-                    <button id="user-logout-btn" class="btn-secondary" style="font-size: 0.875rem; padding: 0.25rem 0.75rem;">Deconnexion</button>
+                    <a href="/my-quotes" class="nav-link">Mes devis</a>
+                    <span class="nav-username">{{ user_display_name }}</span>
+                    <button id="user-logout-btn" class="nav-link">Déconnexion</button>
                 {% else %}
-                    <a href="/login" style="color: var(--color-primary); text-decoration: none; padding: 0.5rem 1rem;">Connexion</a>
+                    <a href="/login" class="nav-link">Connexion</a>
                     <a href="/register" class="admin-link">S'inscrire</a>
                 {% endif %}
-                <a href="/admin" class="admin-link" style="margin-left: 0.5rem;">Administration</a>
+                <a href="/admin" class="admin-link">Administration</a>
             </nav>
         </div>
     </header>
