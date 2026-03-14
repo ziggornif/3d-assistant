@@ -2,6 +2,11 @@
 
 {% block title %}Mes Devis - 3D Quote Service{% endblock %}
 
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/css/accessibility.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+{% endblock %}
+
 {% block head_scripts %}
     <script>
         window.__SSR_DATA__ = {
@@ -21,10 +26,10 @@
                 <h1>Service de Devis Impression 3D</h1>
             </div>
             <nav class="header-nav" aria-label="Navigation principale">
-                <a href="/">Accueil</a>
-                <a href="/my-quotes" aria-current="page"><strong>Mes devis</strong></a>
-                <span style="color: var(--color-text-light);">{{ user_display_name }}</span>
-                <button id="logout-btn" class="btn-secondary" style="font-size: 0.875rem; padding: 0.25rem 0.75rem;">Deconnexion</button>
+                <a href="/" class="nav-link">Accueil</a>
+                <a href="/my-quotes" class="nav-link" aria-current="page"><strong>Mes devis</strong></a>
+                <span class="nav-username">{{ user_display_name }}</span>
+                <button id="logout-btn" class="nav-link">Déconnexion</button>
             </nav>
         </div>
     </header>
@@ -32,16 +37,40 @@
     <main id="main-content" role="main">
         <section>
             <h2>Mes devis</h2>
+
+            <!-- Status filters -->
+            <div id="quote-filters" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                <button class="action-btn account-filter-btn active-filter" data-status="">Tous</button>
+                <button class="action-btn account-filter-btn" data-status="draft">Brouillons</button>
+                <button class="action-btn account-filter-btn" data-status="generated">Generes</button>
+                <button class="action-btn account-filter-btn" data-status="deleted">Supprimes</button>
+            </div>
+
             <div id="quotes-loading" style="text-align:center; padding:2rem; color: var(--color-text-light);">
                 Chargement de vos devis...
             </div>
             <div id="quotes-empty" hidden style="text-align:center; padding:2rem;">
-                <p style="color: var(--color-text-light); margin-bottom:1rem;">Vous n'avez pas encore de devis.</p>
+                <p style="color: var(--color-text-light); margin-bottom:1rem;">Aucun devis a afficher.</p>
                 <a href="/" class="btn-primary" style="text-decoration:none; display:inline-block;">Creer un devis</a>
             </div>
             <div id="quotes-error" class="error-banner" hidden></div>
             <div id="quotes-list" role="list"></div>
         </section>
+
+        <!-- Delete confirmation modal -->
+        <div id="delete-modal" class="modal" hidden>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Supprimer le devis</h3>
+                    <button class="close-btn" id="delete-modal-close">&times;</button>
+                </div>
+                <p>Etes-vous sur de vouloir supprimer ce devis ? Cette action est irreversible.</p>
+                <div class="modal-actions">
+                    <button class="btn-secondary" id="delete-cancel">Annuler</button>
+                    <button class="btn-primary" id="delete-confirm" style="background: var(--color-error);">Supprimer</button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <footer role="contentinfo">
@@ -51,11 +80,86 @@
 
 {% block scripts %}
     <script>
+        let currentFilter = '';
+        let deleteTargetId = null;
+
+        const statusLabels = {
+            draft: 'Brouillon',
+            generated: 'Genere',
+            deleted: 'Supprime'
+        };
+        const statusClasses = {
+            draft: 'status-pending',
+            generated: 'status-active',
+            deleted: 'status-disabled'
+        };
+
+        function formatPrice(amount) {
+            return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
         // Logout
         document.getElementById('logout-btn').addEventListener('click', async () => {
             await fetch('/api/auth/logout', { method: 'POST' });
             window.location.href = '/';
         });
+
+        // Delete modal
+        function showDeleteModal(quoteId) {
+            deleteTargetId = quoteId;
+            document.getElementById('delete-modal').hidden = false;
+        }
+        function hideDeleteModal() {
+            deleteTargetId = null;
+            document.getElementById('delete-modal').hidden = true;
+        }
+        document.getElementById('delete-modal-close').addEventListener('click', hideDeleteModal);
+        document.getElementById('delete-cancel').addEventListener('click', hideDeleteModal);
+        document.getElementById('delete-confirm').addEventListener('click', async () => {
+            if (!deleteTargetId) return;
+            try {
+                const response = await fetch(`/api/users/me/quotes/${deleteTargetId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'deleted' })
+                });
+                if (!response.ok) throw new Error('Delete failed');
+                hideDeleteModal();
+                loadQuotes();
+            } catch (err) {
+                alert('Erreur lors de la suppression du devis');
+                hideDeleteModal();
+            }
+        });
+
+        // Filter tabs
+        document.querySelectorAll('.account-filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.account-filter-btn').forEach(b => b.classList.remove('active-filter'));
+                btn.classList.add('active-filter');
+                currentFilter = btn.dataset.status;
+                loadQuotes();
+            });
+        });
+
+        function getActions(q) {
+            if (q.status === 'draft') {
+                return `<a href="/?session=${q.session_id}" class="action-btn btn-edit" style="text-decoration:none;">Continuer</a>
+                        <button class="action-btn btn-toggle" onclick="showDeleteModal('${q.id}')">Supprimer</button>`;
+            }
+            if (q.status === 'generated') {
+                return `<a href="/api/users/me/quotes/${q.id}/export?format=csv" class="action-btn btn-edit" style="text-decoration:none;" download>Exporter CSV</a>
+                        <button class="action-btn btn-toggle" onclick="showDeleteModal('${q.id}')">Supprimer</button>`;
+            }
+            // deleted: read-only
+            return '<span style="color: var(--color-text-light); font-size:0.75rem;">Lecture seule</span>';
+        }
 
         // Load quotes
         async function loadQuotes() {
@@ -64,12 +168,16 @@
             const errorEl = document.getElementById('quotes-error');
             const listEl = document.getElementById('quotes-list');
 
-            try {
-                const response = await fetch('/api/users/me/quotes');
-                if (!response.ok) {
-                    throw new Error('Failed to load quotes');
-                }
+            loadingEl.hidden = false;
+            emptyEl.hidden = true;
+            errorEl.hidden = true;
+            listEl.innerHTML = '';
 
+            const statusParam = currentFilter ? `?status=${currentFilter}` : '';
+
+            try {
+                const response = await fetch(`/api/users/me/quotes${statusParam}`);
+                if (!response.ok) throw new Error('Failed to load quotes');
                 const data = await response.json();
                 loadingEl.hidden = true;
 
@@ -79,28 +187,31 @@
                 }
 
                 listEl.innerHTML = data.quotes.map(q => `
-                    <div class="model-card" role="listitem" style="cursor:pointer;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <div>
-                                <h3 style="color: var(--color-text);">Devis #${q.id.substring(0, 8)}</h3>
-                                <p style="font-size: 0.875rem; color: var(--color-text-light);">${q.created_at}</p>
-                                <p style="font-size: 0.875rem; color: var(--color-text-light);">${q.model_count} modele(s)</p>
+                    <div class="model-card" role="listitem">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div style="flex:1; min-width:200px;">
+                                <h3 style="color: var(--color-text); margin-bottom:0.25rem;">
+                                    ${q.status === 'draft' ? 'Brouillon' : 'Devis'} #${escapeHtml(q.id.substring(0, 8))}
+                                </h3>
+                                <p style="font-size:0.875rem; color:var(--color-text-light); margin:0;">${escapeHtml(q.created_at)}</p>
+                                <p style="font-size:0.875rem; color:var(--color-text-light); margin:0;">${q.model_count} modele(s)</p>
                             </div>
                             <div style="text-align:right;">
-                                <p style="font-size: 1.25rem; font-weight: 700; color: var(--color-success);">${new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(q.total_price)}</p>
-                                <span class="status-badge status-active">${q.status}</span>
+                                ${q.status !== 'draft'
+                                    ? `<p style="font-size:1.25rem; font-weight:700; color:var(--color-success); margin:0 0 0.25rem 0;">${formatPrice(q.total_price)}</p>`
+                                    : '<p style="font-size:0.875rem; color:var(--color-text-light); margin:0 0 0.25rem 0;">Prix non calcule</p>'
+                                }
+                                <span class="status-badge ${statusClasses[q.status] || ''}">${statusLabels[q.status] || q.status}</span>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                ${getActions(q)}
                             </div>
                         </div>
                     </div>
                 `).join('');
             } catch (err) {
                 loadingEl.hidden = true;
-                errorEl.textContent = 'Erreur lors du chargement des devis. ';
-                const retryBtn = document.createElement('button');
-                retryBtn.textContent = 'Reessayer';
-                retryBtn.className = 'btn-secondary';
-                retryBtn.onclick = loadQuotes;
-                errorEl.appendChild(retryBtn);
+                errorEl.innerHTML = 'Erreur lors du chargement des devis. <button class="btn-secondary" onclick="loadQuotes()">Reessayer</button>';
                 errorEl.hidden = false;
             }
         }

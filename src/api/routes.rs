@@ -45,6 +45,7 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
         .route("/login", get(ssr::login_page))
         .route("/register", get(ssr::register_page))
         .route("/my-quotes", get(ssr::my_quotes_page))
+        .route("/my-quotes/{quote_id}", get(ssr::quote_detail_page))
         .route("/admin", get(ssr::admin_page))
         .route(
             "/admin/login",
@@ -67,6 +68,18 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
         .route(
             "/api/users/me/quotes/{quote_id}",
             get(user_quotes::get_my_quote),
+        )
+        .route(
+            "/api/users/me/quotes/{quote_id}",
+            patch(user_quotes::soft_delete_quote),
+        )
+        .route(
+            "/api/users/me/quotes/{quote_id}/export",
+            get(user_quotes::export_quote),
+        )
+        .route(
+            "/api/users/me/quotes/{quote_id}/recalculate",
+            post(user_quotes::recalculate_quote),
         )
         // Session management
         .route("/api/sessions", post(upload::create_session))

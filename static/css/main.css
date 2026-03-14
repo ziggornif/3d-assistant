@@ -107,7 +107,29 @@ header {
 
 .header-nav {
   display: flex;
+  align-items: center;
   gap: var(--spacing-md);
+}
+
+.nav-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  padding: 0;
+}
+
+.nav-link:hover {
+  text-decoration: underline;
+}
+
+.nav-username {
+  color: var(--color-text-light);
+  font-weight: 500;
 }
 
 .admin-link {

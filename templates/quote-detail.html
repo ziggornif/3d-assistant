@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Devis #{{ quote_id | truncate(length=8, end="") }} - 3D Quote Service{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/css/accessibility.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+{% endblock %}
+
+{% block head_scripts %}
+    <script>
+        window.__SSR_DATA__ = {
+            apiBase: "{{ api_base }}",
+            quoteId: "{{ quote_id }}"
+        };
+    </script>
+{% endblock %}
+
+{% block body %}
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+    <header role="banner">
+        <div class="header-content">
+            <div>
+                <h1>Service de Devis Impression 3D</h1>
+            </div>
+            <nav class="header-nav" aria-label="Navigation principale">
+                <a href="/" class="nav-link">Accueil</a>
+                <a href="/my-quotes" class="nav-link">Mes devis</a>
+                <span class="nav-username">{{ user_display_name }}</span>
+                <button id="logout-btn" class="nav-link">Deconnexion</button>
+            </nav>
+        </div>
+    </header>
+
+    <main id="main-content" role="main">
+        <section>
+            <div style="margin-bottom: 1rem;">
+                <a href="/my-quotes" class="nav-link">&larr; Retour a mes devis</a>
+            </div>
+
+            <div id="quote-loading" style="text-align:center; padding:2rem; color: var(--color-text-light);">
+                Chargement du devis...
+            </div>
+            <div id="quote-error" class="error-banner" hidden></div>
+            <div id="quote-content" hidden>
+                <h2 id="quote-title"></h2>
+                <p id="quote-date" style="color: var(--color-text-light); margin-bottom: 1.5rem;"></p>
+
+                <h3>Modeles</h3>
+                <div id="quote-models" style="margin-bottom: 1.5rem;"></div>
+
+                <div class="model-card" style="background: var(--color-bg-alt, #f8fafc);">
+                    <h3>Recapitulatif</h3>
+                    <div id="quote-breakdown"></div>
+                    <div style="border-top: 2px solid var(--color-primary); margin-top: 1rem; padding-top: 1rem; text-align: right;">
+                        <span style="font-size: 1.5rem; font-weight: 700; color: var(--color-primary);" id="quote-total"></span>
+                    </div>
+                </div>
+
+                <div id="quote-actions" style="display: flex; gap: 0.5rem; margin-top: 1.5rem;" hidden>
+                    <a id="action-export" class="action-btn btn-edit" style="text-decoration:none;" download>Exporter CSV</a>
+                    <button id="action-recalculate" class="action-btn btn-edit">Recalculer aux prix actuels</button>
+                    <button id="action-delete" class="action-btn btn-toggle">Supprimer</button>
+                </div>
+                <div id="quote-deleted-notice" style="margin-top: 1.5rem; padding: 0.75rem; background: rgba(100,116,139,0.1); border-radius: 0.5rem; color: var(--color-text-light); text-align: center;" hidden>
+                    Ce devis a ete supprime.
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer role="contentinfo">
+        <p>&copy; 2025 Service de Devis Impression 3D</p>
+    </footer>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/';
+        });
+
+        const fmt = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v);
+
+        async function loadQuote() {
+            const loadingEl = document.getElementById('quote-loading');
+            const errorEl = document.getElementById('quote-error');
+            const contentEl = document.getElementById('quote-content');
+            const quoteId = window.__SSR_DATA__.quoteId;
+
+            try {
+                const response = await fetch(`/api/users/me/quotes/${quoteId}`);
+                if (!response.ok) throw new Error('Failed to load quote');
+
+                const data = await response.json();
+                loadingEl.hidden = true;
+                contentEl.hidden = false;
+
+                document.getElementById('quote-title').textContent = `Devis #${data.id.substring(0, 8)}`;
+                document.getElementById('quote-date').textContent = `Cree le ${data.created_at}`;
+
+                // Models
+                const modelsEl = document.getElementById('quote-models');
+                modelsEl.innerHTML = data.models.map(m => `
+                    <div class="model-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <strong>${m.filename}</strong>
+                                <p style="font-size: 0.875rem; color: var(--color-text-light);">
+                                    ${m.material_name} &mdash; ${m.volume_cm3.toFixed(2)} cm3
+                                </p>
+                            </div>
+                            <span style="font-weight: 700; color: var(--color-success);">${fmt(m.price)}</span>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Breakdown
+                const breakdownEl = document.getElementById('quote-breakdown');
+                const b = data.breakdown;
+                breakdownEl.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                        <span>Sous-total materiaux</span><span>${fmt(b.subtotal || 0)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                        <span>Frais de base</span><span>${fmt(b.base_fee || 0)}</span>
+                    </div>
+                    ${b.minimum_applied ? '<div style="font-size:0.875rem; color:var(--color-text-light); margin-bottom:0.5rem;">Minimum de commande applique</div>' : ''}
+                `;
+
+                document.getElementById('quote-total').textContent = fmt(data.total_price);
+
+                // Show actions based on status
+                if (data.status === 'generated') {
+                    const actionsEl = document.getElementById('quote-actions');
+                    actionsEl.hidden = false;
+                    document.getElementById('action-export').href = `/api/users/me/quotes/${quoteId}/export?format=csv`;
+                } else if (data.status === 'deleted') {
+                    document.getElementById('quote-deleted-notice').hidden = false;
+                }
+            } catch (err) {
+                loadingEl.hidden = true;
+                errorEl.textContent = 'Erreur lors du chargement du devis.';
+                errorEl.hidden = false;
+            }
+        }
+
+        // Delete
+        document.getElementById('action-delete').addEventListener('click', async () => {
+            if (!confirm('Supprimer ce devis ? Cette action est irreversible.')) return;
+            const quoteId = window.__SSR_DATA__.quoteId;
+            try {
+                const res = await fetch(`/api/users/me/quotes/${quoteId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'deleted' })
+                });
+                if (!res.ok) throw new Error('Delete failed');
+                window.location.href = '/my-quotes';
+            } catch (err) {
+                alert('Erreur lors de la suppression');
+            }
+        });
+
+        // Recalculate
+        document.getElementById('action-recalculate').addEventListener('click', async () => {
+            const quoteId = window.__SSR_DATA__.quoteId;
+            const btn = document.getElementById('action-recalculate');
+            btn.disabled = true;
+            btn.textContent = 'Recalcul en cours...';
+            try {
+                const res = await fetch(`/api/users/me/quotes/${quoteId}/recalculate`, { method: 'POST' });
+                if (!res.ok) throw new Error('Recalculate failed');
+                const data = await res.json();
+                window.location.href = `/my-quotes/${data.new_quote_id}`;
+            } catch (err) {
+                alert('Erreur lors du recalcul');
+                btn.disabled = false;
+                btn.textContent = 'Recalculer aux prix actuels';
+            }
+        });
+
+        loadQuote();
+    </script>
+{% endblock %}

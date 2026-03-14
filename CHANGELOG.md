@@ -20,6 +20,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Quote summary enhancements** : Demo mode CTA banner for visitors, "Retrouvez ce devis dans Mes devis" reminder for authenticated users
 - **New status badges CSS** : `.status-pending` (orange), `.status-disabled` (grey), `.status-rejected` (red)
 - **Rate limiting** on `/api/auth/login` and `/api/auth/register`
+- **Quote lifecycle** : Draft (sessions with models, no quote generated), Generated, Deleted (soft delete)
+- **Drafts in "Mes devis"** : Authenticated sessions with uploaded models appear as drafts, clickable to resume
+- **Soft delete** : Users can delete quotes (marked as deleted, hidden from default view, kept in DB)
+- **Export CSV** : Download quotes as semicolon-separated CSV (UTF-8 BOM, Excel FR compatible) via `GET /api/users/me/quotes/{id}/export?format=csv`
+- **Status filters** : Filter quotes by status (Tous / Brouillons / Generes / Supprimes) in "Mes devis"
+- **Recalculate quote** : Regenerate a quote with current material prices (creates new quote, preserves original)
 
 ### Changed
 
@@ -41,6 +47,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 | GET | `/api/users/me/quotes/{id}` | Get quote detail (ownership verified) |
 | GET | `/api/admin/users` | List users with optional status filter (admin) |
 | PATCH | `/api/admin/users/{id}` | Update user status (admin) |
+| PATCH | `/api/users/me/quotes/{id}` | Soft delete a quote (set status to "deleted") |
+| GET | `/api/users/me/quotes/{id}/export` | Export quote as CSV (query param: format=csv) |
+| POST | `/api/users/me/quotes/{id}/recalculate` | Recalculate quote with current prices |
 
 ### New Dependencies
 
@@ -53,3 +62,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `007_users.sql` : Creates `users` and `user_sessions` tables
 - `008_sessions_user_id.sql` : Adds `user_id` and `session_type` to `quote_sessions` (non-destructive)
+- `009_quotes_deleted_at.sql` : Adds `deleted_at` to `quotes` for soft delete support (non-destructive)
