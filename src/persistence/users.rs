@@ -2,31 +2,32 @@ use crate::models::user::User;
 use chrono::NaiveDateTime;
 use sqlx::PgPool;
 
+/// Parameters for creating a new user
+pub struct CreateUser<'a> {
+    pub id: &'a str,
+    pub email: &'a str,
+    pub password_hash: &'a str,
+    pub display_name: &'a str,
+    pub status: &'a str,
+    pub role: &'a str,
+    pub created_at: NaiveDateTime,
+}
+
 /// Create a new user
-#[allow(clippy::too_many_arguments)]
-pub async fn create(
-    pool: &PgPool,
-    id: &str,
-    email: &str,
-    password_hash: &str,
-    display_name: &str,
-    status: &str,
-    role: &str,
-    created_at: NaiveDateTime,
-) -> Result<(), sqlx::Error> {
+pub async fn create(pool: &PgPool, params: &CreateUser<'_>) -> Result<(), sqlx::Error> {
     sqlx::query(
         r"
         INSERT INTO users (id, email, password_hash, display_name, status, role, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
         ",
     )
-    .bind(id)
-    .bind(email)
-    .bind(password_hash)
-    .bind(display_name)
-    .bind(status)
-    .bind(role)
-    .bind(created_at)
+    .bind(params.id)
+    .bind(params.email)
+    .bind(params.password_hash)
+    .bind(params.display_name)
+    .bind(params.status)
+    .bind(params.role)
+    .bind(params.created_at)
     .execute(pool)
     .await?;
 

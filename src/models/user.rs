@@ -10,6 +10,7 @@ pub const STATUS_REJECTED: &str = "rejected";
 
 /// User roles
 pub const ROLE_USER: &str = "user";
+#[allow(dead_code)]
 pub const ROLE_ADMIN: &str = "admin";
 
 /// Represents a registered user
@@ -33,16 +34,19 @@ impl User {
     }
 
     /// Check if the user account is pending validation
+    #[allow(dead_code)]
     pub fn is_pending(&self) -> bool {
         self.status == STATUS_PENDING
     }
 
     /// Check if the user account is disabled
+    #[allow(dead_code)]
     pub fn is_disabled(&self) -> bool {
         self.status == STATUS_DISABLED
     }
 
     /// Check if the user is an admin
+    #[allow(dead_code)]
     pub fn is_admin(&self) -> bool {
         self.role == ROLE_ADMIN
     }

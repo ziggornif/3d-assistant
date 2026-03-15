@@ -78,6 +78,7 @@ pub async fn soft_delete(
 }
 
 /// Hard delete a quote (admin only, only already soft-deleted quotes)
+#[allow(dead_code)]
 pub async fn hard_delete(pool: &PgPool, quote_id: &str) -> Result<bool, sqlx::Error> {
     let result = sqlx::query(
         r"
@@ -122,5 +123,6 @@ pub struct QuoteRow {
     pub status: String,
     pub breakdown: String,
     pub created_at: NaiveDateTime,
+    #[allow(dead_code)]
     pub deleted_at: Option<NaiveDateTime>,
 }

@@ -75,13 +75,15 @@ impl AuthService {
 
         persistence::users::create(
             &self.pool,
-            &id,
-            &email,
-            &password_hash,
-            display_name.trim(),
-            STATUS_PENDING,
-            ROLE_USER,
-            now,
+            &persistence::users::CreateUser {
+                id: &id,
+                email: &email,
+                password_hash: &password_hash,
+                display_name: display_name.trim(),
+                status: STATUS_PENDING,
+                role: ROLE_USER,
+                created_at: now,
+            },
         )
         .await
         .map_err(|e| AuthError::Internal(e.to_string()))?;

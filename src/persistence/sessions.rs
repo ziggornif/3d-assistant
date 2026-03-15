@@ -103,6 +103,7 @@ pub async fn delete_expired(pool: &PgPool, now: NaiveDateTime) -> Result<u64, sq
 }
 
 /// Find sessions by user ID (for quote history)
+#[allow(dead_code)]
 pub async fn find_by_user_id(
     pool: &PgPool,
     user_id: &str,

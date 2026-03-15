@@ -60,6 +60,7 @@ impl QuoteSession {
     }
 
     /// Check if this is an authenticated session
+    #[allow(dead_code)]
     pub fn is_authenticated(&self) -> bool {
         self.session_type == SESSION_TYPE_AUTHENTICATED
     }

@@ -55,6 +55,7 @@ pub async fn delete_by_token(pool: &PgPool, token: &str) -> Result<(), sqlx::Err
 }
 
 /// Delete all sessions for a user
+#[allow(dead_code)]
 pub async fn delete_by_user_id(pool: &PgPool, user_id: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
         r"
@@ -69,6 +70,7 @@ pub async fn delete_by_user_id(pool: &PgPool, user_id: &str) -> Result<(), sqlx:
 }
 
 /// Delete expired user sessions
+#[allow(dead_code)]
 pub async fn delete_expired(pool: &PgPool, now: NaiveDateTime) -> Result<u64, sqlx::Error> {
     let result = sqlx::query(
         r"
