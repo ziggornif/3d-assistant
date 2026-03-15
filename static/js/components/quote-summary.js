@@ -1,6 +1,7 @@
 /**
  * Quote Summary Web Component
  * Displays itemized quote breakdown with totals
+ * Supports demo-mode (visitors) and authenticated mode (logged-in users)
  */
 
 class QuoteSummary extends HTMLElement {
@@ -12,7 +13,15 @@ class QuoteSummary extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ['session-id'];
+    return ['session-id', 'demo-mode', 'authenticated'];
+  }
+
+  get isDemoMode() {
+    return this.hasAttribute('demo-mode');
+  }
+
+  get isAuthenticated() {
+    return this.hasAttribute('authenticated');
   }
 
   connectedCallback() {
@@ -202,15 +211,71 @@ class QuoteSummary extends HTMLElement {
           color: var(--color-text-light, #64748b);
           font-size: 0.875rem;
         }
+
+        /* CTA banner for demo mode (visitors) */
+        .cta-demo-banner {
+          background: rgba(37, 99, 235, 0.08);
+          border: 1px solid rgba(37, 99, 235, 0.2);
+          border-radius: var(--border-radius-md, 0.5rem);
+          padding: 1.5rem;
+          text-align: center;
+          margin: 0;
+        }
+
+        .cta-demo-banner p {
+          margin: 0 0 1rem 0;
+          color: var(--color-text, #1e293b);
+          font-weight: 500;
+        }
+
+        .cta-demo-banner .btn-cta {
+          background: var(--color-primary, #2563eb);
+          color: white;
+          border: none;
+          padding: 0.75rem 2rem;
+          border-radius: var(--border-radius-md, 0.5rem);
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          text-decoration: none;
+          display: inline-block;
+          transition: background 0.2s;
+        }
+
+        .cta-demo-banner .btn-cta:hover {
+          background: var(--color-primary-dark, #1d4ed8);
+        }
+
+        .cta-demo-banner .login-link {
+          display: block;
+          margin-top: 0.75rem;
+          font-size: 0.875rem;
+          color: var(--color-primary, #2563eb);
+          text-decoration: underline;
+        }
+
+        /* My quotes reminder for authenticated users */
+        .my-quotes-reminder {
+          background: var(--color-bg-light, #f8fafc);
+          padding: 1rem;
+          text-align: center;
+          font-size: 0.875rem;
+          color: var(--color-text-light, #64748b);
+        }
+
+        .my-quotes-reminder a {
+          color: var(--color-primary, #2563eb);
+          text-decoration: underline;
+        }
       </style>
 
       <div class="quote-summary">
         <div class="summary-header">
-          <h3>Récapitulatif du devis</h3>
+          <h3>Recapitulatif du devis</h3>
         </div>
         <div id="content">
           <div class="empty-state">
-            Sélectionnez des matériaux pour voir le devis
+            Selectionnez des materiaux pour voir le devis
           </div>
         </div>
       </div>
@@ -275,7 +340,7 @@ class QuoteSummary extends HTMLElement {
           <div class="item-details">
             <div class="item-name">${this.escapeHtml(item.model_name)}</div>
             <div class="item-meta">
-              ${this.escapeHtml(item.material_name)} - ${item.volume_cm3.toFixed(2)} cm³
+              ${this.escapeHtml(item.material_name)} - ${item.volume_cm3.toFixed(2)} cm3
             </div>
           </div>
           <div class="item-price">${this.formatPrice(item.price)}</div>
@@ -287,11 +352,44 @@ class QuoteSummary extends HTMLElement {
     const minimumNoticeHtml = this.quoteData.minimum_applied
       ? `
         <div class="minimum-notice">
-          <strong>Minimum de commande appliqué</strong>
-          Le total calculé (${this.formatPrice(this.quoteData.calculated_total)}) est inférieur au minimum de commande de ${this.formatPrice(this.quoteData.total)}.
+          <strong>Minimum de commande applique</strong>
+          Le total calcule (${this.formatPrice(this.quoteData.calculated_total)}) est inferieur au minimum de commande de ${this.formatPrice(this.quoteData.total)}.
         </div>
       `
       : '';
+
+    // Determine what to show in the actions area
+    let actionsHtml = '';
+
+    if (this.isDemoMode) {
+      // Demo mode: CTA to register instead of generate button
+      actionsHtml = `
+        <div class="cta-demo-banner" role="complementary">
+          <p>Inscrivez-vous pour obtenir votre devis</p>
+          <a href="/register" class="btn-cta">S'inscrire gratuitement</a>
+          <a href="/login" class="login-link">Deja inscrit ? Se connecter</a>
+        </div>
+      `;
+    } else {
+      // Authenticated mode: generate/regenerate button
+      actionsHtml = `
+        <div class="actions">
+          <button class="btn-generate" id="generate-btn">
+            ${this.quoteData.quote_id ? 'Regenerer le devis' : 'Finaliser le devis'}
+          </button>
+        </div>
+      `;
+    }
+
+    // My quotes reminder for authenticated users after quote generation
+    let myQuotesReminderHtml = '';
+    if (this.isAuthenticated && this.quoteData.quote_id) {
+      myQuotesReminderHtml = `
+        <div class="my-quotes-reminder">
+          Retrouvez ce devis et tous les autres dans <a href="/my-quotes">Mes devis</a>
+        </div>
+      `;
+    }
 
     content.innerHTML = `
       <ul class="items-list" role="list">
@@ -299,7 +397,7 @@ class QuoteSummary extends HTMLElement {
       </ul>
       <div class="totals">
         <div class="total-row">
-          <span class="total-label">Sous-total matériaux</span>
+          <span class="total-label">Sous-total materiaux</span>
           <span class="total-value">${this.formatPrice(this.quoteData.subtotal)}</span>
         </div>
         <div class="total-row">
@@ -320,23 +418,24 @@ class QuoteSummary extends HTMLElement {
           ? `<div class="quote-id">Devis #${this.quoteData.quote_id.substring(0, 8)}</div>`
           : ''
       }
-      <div class="actions">
-        <button class="btn-generate" id="generate-btn">
-          ${this.quoteData.quote_id ? 'Regénérer le devis' : 'Finaliser le devis'}
-        </button>
-      </div>
+      ${actionsHtml}
+      ${myQuotesReminderHtml}
     `;
 
-    // Add generate button handler
-    const generateBtn = this.shadowRoot.getElementById('generate-btn');
-    generateBtn.addEventListener('click', () => this.generateQuote());
+    // Add generate button handler (only if not in demo mode)
+    if (!this.isDemoMode) {
+      const generateBtn = this.shadowRoot.getElementById('generate-btn');
+      if (generateBtn) {
+        generateBtn.addEventListener('click', () => this.generateQuote());
+      }
+    }
   }
 
   showEmpty() {
     const content = this.shadowRoot.getElementById('content');
     content.innerHTML = `
       <div class="empty-state">
-        Sélectionnez des matériaux pour voir le devis
+        Selectionnez des materiaux pour voir le devis
       </div>
     `;
   }
@@ -350,7 +449,7 @@ class QuoteSummary extends HTMLElement {
     const generateBtn = this.shadowRoot.getElementById('generate-btn');
     if (generateBtn) {
       generateBtn.disabled = true;
-      generateBtn.textContent = 'Génération...';
+      generateBtn.textContent = 'Generation...';
     }
 
     try {
@@ -377,7 +476,7 @@ class QuoteSummary extends HTMLElement {
       );
     } catch (error) {
       console.error('Error generating quote:', error);
-      this.showError('Erreur lors de la génération du devis');
+      this.showError('Erreur lors de la generation du devis');
     }
   }
 

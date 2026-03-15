@@ -6,7 +6,7 @@
 use quote_service::{
     business::{SessionService, file_processor},
     config::Config,
-    db::create_pool,
+    db::{create_pool, run_migrations, seed_data},
     mcp::create_mcp_router,
     persistence::{materials, models as model_persistence},
 };
@@ -21,9 +21,16 @@ async fn setup_test_db() -> PgPool {
     let database_url =
         std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for integration tests");
 
-    create_pool(&database_url, 5)
+    let pool = create_pool(&database_url, 5)
         .await
-        .expect("Failed to create test database pool")
+        .expect("Failed to create test database pool");
+
+    run_migrations(&pool)
+        .await
+        .expect("Failed to run migrations");
+    seed_data(&pool).await.expect("Failed to seed data");
+
+    pool
 }
 
 /// Test helper to create test config

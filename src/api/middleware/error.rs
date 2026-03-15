@@ -41,6 +41,21 @@ pub enum AppError {
 
     #[error("Internal server error: {0}")]
     Internal(String),
+
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
+
+    #[error("Validation error: {0}")]
+    Validation(String),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
 }
 
 /// Error response structure
@@ -147,6 +162,56 @@ impl IntoResponse for AppError {
                 ErrorResponse {
                     error: ErrorDetail {
                         code: "FILE_PROCESSING_ERROR".to_string(),
+                        message: msg.clone(),
+                        details: None,
+                    },
+                },
+            ),
+            AppError::Unauthorized(msg) => (
+                StatusCode::UNAUTHORIZED,
+                ErrorResponse {
+                    error: ErrorDetail {
+                        code: "UNAUTHORIZED".to_string(),
+                        message: msg.clone(),
+                        details: None,
+                    },
+                },
+            ),
+            AppError::Forbidden(msg) => (
+                StatusCode::FORBIDDEN,
+                ErrorResponse {
+                    error: ErrorDetail {
+                        code: "FORBIDDEN".to_string(),
+                        message: msg.clone(),
+                        details: None,
+                    },
+                },
+            ),
+            AppError::Conflict(msg) => (
+                StatusCode::CONFLICT,
+                ErrorResponse {
+                    error: ErrorDetail {
+                        code: "CONFLICT".to_string(),
+                        message: msg.clone(),
+                        details: None,
+                    },
+                },
+            ),
+            AppError::Validation(msg) => (
+                StatusCode::BAD_REQUEST,
+                ErrorResponse {
+                    error: ErrorDetail {
+                        code: "VALIDATION_ERROR".to_string(),
+                        message: msg.clone(),
+                        details: None,
+                    },
+                },
+            ),
+            AppError::NotFound(msg) => (
+                StatusCode::NOT_FOUND,
+                ErrorResponse {
+                    error: ErrorDetail {
+                        code: "NOT_FOUND".to_string(),
                         message: msg.clone(),
                         details: None,
                     },

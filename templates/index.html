@@ -28,7 +28,10 @@
         window.__SSR_DATA__ = {
             sessionId: "{{ session_id }}",
             materials: {{ materials_json | safe }},
-            apiBase: "{{ api_base }}"
+            apiBase: "{{ api_base }}",
+            demoMode: {{ demo_mode }},
+            authenticatedUser: {{ authenticated_user }},
+            userDisplayName: "{{ user_display_name }}"
         };
     </script>
 {% endblock %}
@@ -42,7 +45,15 @@
                 <h1>Service de Devis Impression 3D</h1>
                 <p>Téléchargez vos modèles 3D et obtenez un devis instantané</p>
             </div>
-            <nav class="header-nav">
+            <nav class="header-nav" aria-label="Navigation principale">
+                {% if authenticated_user %}
+                    <a href="/my-quotes" class="nav-link">Mes devis</a>
+                    <span class="nav-username">{{ user_display_name }}</span>
+                    <button id="user-logout-btn" class="nav-link">Déconnexion</button>
+                {% else %}
+                    <a href="/login" class="nav-link">Connexion</a>
+                    <a href="/register" class="admin-link">S'inscrire</a>
+                {% endif %}
                 <a href="/admin" class="admin-link">Administration</a>
             </nav>
         </div>
@@ -71,7 +82,10 @@
 
         <section id="quote-section" aria-labelledby="quote-heading" hidden>
             <h2 id="quote-heading">3. Votre devis</h2>
-            <quote-summary id="quote-summary" aria-live="polite"></quote-summary>
+            <quote-summary id="quote-summary" aria-live="polite"
+                {% if demo_mode %}demo-mode="true"{% endif %}
+                {% if authenticated_user %}authenticated="true"{% endif %}
+            ></quote-summary>
         </section>
     </main>
 
@@ -82,4 +96,14 @@
 
 {% block scripts %}
     <script type="module" src="/static/js/main.js"></script>
+    <script>
+        // User logout handler
+        const logoutBtn = document.getElementById('user-logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                window.location.href = '/';
+            });
+        }
+    </script>
 {% endblock %}

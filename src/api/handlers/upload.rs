@@ -3,6 +3,7 @@ use axum::{
     extract::{Multipart, Path, State},
     http::StatusCode,
 };
+use axum_extra::extract::cookie::CookieJar;
 use chrono::NaiveDateTime;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -14,7 +15,7 @@ use crate::{
 };
 use crate::{api::routes::AppState, persistence::models};
 use crate::{
-    business::{SessionService, file_processor},
+    business::{AuthService, SessionService, file_processor},
     models::model::CreateModel,
 };
 
@@ -26,13 +27,35 @@ pub struct CreateSessionResponse {
 }
 
 /// Create a new quote session
+/// If the user is authenticated, creates an authenticated session (30 days).
+/// Otherwise, creates an anonymous demo session (24 hours).
 pub async fn create_session(
     State(state): State<AppState>,
+    jar: CookieJar,
 ) -> AppResult<Json<CreateSessionResponse>> {
-    let session_service = SessionService::new(state.pool.clone(), &state.config.upload_dir);
-    let session = session_service.create_session().await?;
+    // Check if user is authenticated
+    let authenticated_user = if let Some(cookie) = jar.get("user_session") {
+        let auth_service = AuthService::new(state.pool.clone());
+        auth_service.verify_session(cookie.value()).await.ok()
+    } else {
+        None
+    };
 
-    tracing::info!("Created new session: {}", session.id);
+    let session_service = SessionService::new(state.pool.clone(), &state.config.upload_dir);
+
+    let session = if let Some(user) = authenticated_user {
+        session_service
+            .create_authenticated_session(&user.id)
+            .await?
+    } else {
+        session_service.create_session().await?
+    };
+
+    tracing::info!(
+        "Created new {} session: {}",
+        session.session_type,
+        session.id
+    );
 
     Ok(Json(CreateSessionResponse {
         session_id: session.id,

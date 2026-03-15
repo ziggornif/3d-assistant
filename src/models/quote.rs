@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use ulid::Ulid;
 
+/// Session type constants
+pub const SESSION_TYPE_ANONYMOUS: &str = "anonymous";
+pub const SESSION_TYPE_AUTHENTICATED: &str = "authenticated";
+
 /// Represents a user's quote session
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct QuoteSession {
@@ -10,10 +14,12 @@ pub struct QuoteSession {
     pub created_at: NaiveDateTime,
     pub expires_at: NaiveDateTime,
     pub status: String,
+    pub user_id: Option<String>,
+    pub session_type: String,
 }
 
 impl QuoteSession {
-    /// Create a new session with default 24h expiration
+    /// Create a new anonymous session with default 24h expiration
     pub fn new() -> Self {
         let now = Utc::now();
         let expires = now + Duration::hours(24);
@@ -23,12 +29,40 @@ impl QuoteSession {
             created_at: now.naive_utc(),
             expires_at: expires.naive_utc(),
             status: "active".to_string(),
+            user_id: None,
+            session_type: SESSION_TYPE_ANONYMOUS.to_string(),
+        }
+    }
+
+    /// Create a new authenticated session linked to a user (30 days expiration)
+    pub fn new_authenticated(user_id: String) -> Self {
+        let now = Utc::now();
+        let expires = now + Duration::days(30);
+
+        Self {
+            id: Ulid::new().to_string(),
+            created_at: now.naive_utc(),
+            expires_at: expires.naive_utc(),
+            status: "active".to_string(),
+            user_id: Some(user_id),
+            session_type: SESSION_TYPE_AUTHENTICATED.to_string(),
         }
     }
 
     /// Check if session is expired
     pub fn is_expired(&self) -> bool {
         self.expires_at < Utc::now().naive_utc()
+    }
+
+    /// Check if this is an anonymous (demo) session
+    pub fn is_anonymous(&self) -> bool {
+        self.session_type == SESSION_TYPE_ANONYMOUS
+    }
+
+    /// Check if this is an authenticated session
+    #[allow(dead_code)]
+    pub fn is_authenticated(&self) -> bool {
+        self.session_type == SESSION_TYPE_AUTHENTICATED
     }
 }
 

@@ -5,13 +5,16 @@ Service de devis instantané pour impression 3D. Téléchargez vos fichiers STL/
 ## Fonctionnalités
 
 - **Upload de fichiers 3D** : Support STL et 3MF
-- **Visualisation 3D** : Prévisualisation interactive avec Three.js (rotation, zoom, pan)
-- **Sélection de matériaux** : PLA, ABS, PETG, Résine avec prix personnalisés
-- **Devis instantané** : Calcul automatique basé sur le volume et le matériau
-- **Interface admin** : Gestion des prix et matériaux sans code
+- **Visualisation 3D** : Previsualisation interactive avec Three.js (rotation, zoom, pan)
+- **Selection de materiaux** : PLA, ABS, PETG, Resine avec prix personnalises
+- **Devis instantane** : Calcul automatique base sur le volume et le materiau, cycle de vie simplifie (brouillon, genere, supprime)
+- **Export CSV** : Exportez vos devis au format CSV (compatible Excel) pour import dans vos outils de facturation
+- **Comptes utilisateurs** : Inscription, connexion, validation admin, historique des devis
+- **Mode demo** : Les visiteurs peuvent tester l'upload et la visualisation sans compte (generation de devis reservee aux comptes valides)
+- **Interface admin** : Gestion des prix, materiaux et comptes utilisateurs
 - **MCP (Model Context Protocol)** : API programmatique pour IA et outils d'automatisation
-- **Nettoyage automatique** : Suppression des sessions expirées et fichiers uploadés
-- **Accessibilité** : Conformité RGAA/WCAG 2.1 AA
+- **Nettoyage automatique** : Suppression des sessions expirees et fichiers uploades
+- **Accessibilite** : Conformite RGAA/WCAG 2.1 AA
 
 ## Architecture
 

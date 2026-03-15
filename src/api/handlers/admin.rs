@@ -245,3 +245,100 @@ pub async fn cleanup_expired_sessions(
 
     Ok(Json(result))
 }
+
+// --- User account management ---
+
+#[derive(Serialize)]
+pub struct AdminUserResponse {
+    pub id: String,
+    pub email: String,
+    pub display_name: String,
+    pub status: String,
+    pub created_at: NaiveDateTime,
+    pub quote_count: i64,
+}
+
+#[derive(Serialize)]
+pub struct AdminUserListResponse {
+    pub users: Vec<AdminUserResponse>,
+    pub total: i64,
+    pub page: i64,
+    pub per_page: i64,
+}
+
+#[derive(Deserialize)]
+pub struct UsersQuery {
+    pub status: Option<String>,
+    pub page: Option<i64>,
+    pub per_page: Option<i64>,
+}
+
+/// List users (admin only)
+pub async fn list_users(
+    State(state): State<AppState>,
+    axum::extract::Query(query): axum::extract::Query<UsersQuery>,
+) -> AppResult<Json<AdminUserListResponse>> {
+    let page = query.page.unwrap_or(1).max(1);
+    let per_page = query.per_page.unwrap_or(20).clamp(1, 100);
+    let offset = (page - 1) * per_page;
+
+    let status_filter = query.status.as_deref();
+
+    let users =
+        persistence::users::list_users(&state.pool, status_filter, per_page, offset).await?;
+    let total = persistence::users::count_users(&state.pool, status_filter).await?;
+
+    let mut user_responses = Vec::new();
+    for user in users {
+        let quote_count = persistence::users::count_user_quotes(&state.pool, &user.id).await?;
+        user_responses.push(AdminUserResponse {
+            id: user.id,
+            email: user.email,
+            display_name: user.display_name,
+            status: user.status,
+            created_at: user.created_at,
+            quote_count,
+        });
+    }
+
+    tracing::info!("Admin listed {} users", user_responses.len());
+
+    Ok(Json(AdminUserListResponse {
+        users: user_responses,
+        total,
+        page,
+        per_page,
+    }))
+}
+
+#[derive(Deserialize)]
+pub struct UpdateUserStatusRequest {
+    pub status: String,
+}
+
+/// Update user status (admin only)
+pub async fn update_user_status(
+    State(state): State<AppState>,
+    Path(user_id): Path<String>,
+    Json(body): Json<UpdateUserStatusRequest>,
+) -> AppResult<Json<AdminUserResponse>> {
+    // Validate the new status
+    crate::models::user::validate_status_transition(&body.status).map_err(AppError::Validation)?;
+
+    let user = persistence::users::update_status(&state.pool, &user_id, &body.status)
+        .await?
+        .ok_or_else(|| AppError::NotFound("Utilisateur non trouvé".to_string()))?;
+
+    let quote_count = persistence::users::count_user_quotes(&state.pool, &user.id).await?;
+
+    tracing::info!("Admin updated user {} status to {}", user_id, body.status);
+
+    Ok(Json(AdminUserResponse {
+        id: user.id,
+        email: user.email,
+        display_name: user.display_name,
+        status: user.status,
+        created_at: user.created_at,
+        quote_count,
+    }))
+}
