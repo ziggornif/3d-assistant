@@ -3,6 +3,7 @@ use chrono::NaiveDateTime;
 use sqlx::PgPool;
 
 /// Create a new user
+#[allow(clippy::too_many_arguments)]
 pub async fn create(
     pool: &PgPool,
     id: &str,

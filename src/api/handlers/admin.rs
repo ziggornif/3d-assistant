@@ -323,8 +323,7 @@ pub async fn update_user_status(
     Json(body): Json<UpdateUserStatusRequest>,
 ) -> AppResult<Json<AdminUserResponse>> {
     // Validate the new status
-    crate::models::user::validate_status_transition(&body.status)
-        .map_err(|e| AppError::Validation(e))?;
+    crate::models::user::validate_status_transition(&body.status).map_err(AppError::Validation)?;
 
     let user = persistence::users::update_status(&state.pool, &user_id, &body.status)
         .await?

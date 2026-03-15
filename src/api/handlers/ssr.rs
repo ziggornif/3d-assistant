@@ -28,24 +28,23 @@ pub async fn index_page(
     let mut session_id_to_set: Option<String> = None;
 
     // Priority 1: ?session= query param (e.g. resuming a draft)
-    if let Some(ref sid) = query.session {
-        if let Ok(Some(db_session)) = persistence::sessions::find_by_id(&state.pool, sid).await
-            && db_session.expires_at > chrono::Utc::now().naive_utc()
-        {
-            session_id_to_set = Some(db_session.id.clone());
-            session = Some(db_session);
-        }
+    if let Some(ref sid) = query.session
+        && let Ok(Some(db_session)) = persistence::sessions::find_by_id(&state.pool, sid).await
+        && db_session.expires_at > chrono::Utc::now().naive_utc()
+    {
+        session_id_to_set = Some(db_session.id.clone());
+        session = Some(db_session);
     }
 
     // Priority 2: session_id cookie
-    if session.is_none() {
-        if let Some(cookie) = jar.get("session_id") {
-            let sid = cookie.value();
-            if let Ok(Some(db_session)) = persistence::sessions::find_by_id(&state.pool, sid).await
-                && db_session.expires_at > chrono::Utc::now().naive_utc()
-            {
-                session = Some(db_session);
-            }
+    if session.is_none()
+        && let Some(cookie) = jar.get("session_id")
+    {
+        let sid = cookie.value();
+        if let Ok(Some(db_session)) = persistence::sessions::find_by_id(&state.pool, sid).await
+            && db_session.expires_at > chrono::Utc::now().naive_utc()
+        {
+            session = Some(db_session);
         }
     }
 

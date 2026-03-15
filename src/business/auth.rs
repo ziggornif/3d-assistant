@@ -1,5 +1,5 @@
 use crate::db::DbPool;
-use crate::models::user::{self, ROLE_USER, STATUS_ACTIVE, STATUS_PENDING, User, UserSession};
+use crate::models::user::{self, ROLE_USER, STATUS_ACTIVE, STATUS_PENDING, User};
 use crate::persistence;
 use anyhow::Result;
 use argon2::{

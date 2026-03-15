@@ -259,6 +259,7 @@ pub async fn export_quote(
     }
 
     // Fetch models for the session
+    #[allow(clippy::type_complexity)]
     let model_rows: Vec<(String, Option<f64>, Option<String>, Option<f64>)> = sqlx::query_as(
         r"
         SELECT um.filename, um.volume_cm3, m.name, m.price_per_cm3
@@ -287,7 +288,7 @@ pub async fn export_quote(
     let mut csv = String::from("\u{FEFF}");
     csv.push_str(&format!("Devis;{}\n", quote_row.id));
     csv.push_str(&format!("Date;{}\n", date_str));
-    csv.push_str("\n");
+    csv.push('\n');
     csv.push_str("Modele;Materiau;Volume (cm3);Prix unitaire (EUR/cm3);Prix ligne (EUR)\n");
 
     for (filename, volume_cm3, material_name, price_per_cm3) in &model_rows {
@@ -304,7 +305,7 @@ pub async fn export_quote(
         ));
     }
 
-    csv.push_str("\n");
+    csv.push('\n');
     let subtotal = breakdown
         .get("subtotal")
         .and_then(|v| v.as_f64())
@@ -486,6 +487,7 @@ async fn get_quote_detail(
         serde_json::from_str(&breakdown_str).unwrap_or(serde_json::json!({}));
 
     // Fetch models with their materials for this session
+    #[allow(clippy::type_complexity)]
     let model_rows: Vec<(String, String, Option<f64>, Option<String>, Option<f64>)> =
         sqlx::query_as(
             r"
