@@ -332,11 +332,7 @@ pub async fn update_user_status(
 
     let quote_count = persistence::users::count_user_quotes(&state.pool, &user.id).await?;
 
-    tracing::info!(
-        "Admin updated user {} status to {}",
-        user_id,
-        body.status
-    );
+    tracing::info!("Admin updated user {} status to {}", user_id, body.status);
 
     Ok(Json(AdminUserResponse {
         id: user.id,

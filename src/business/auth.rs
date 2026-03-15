@@ -1,12 +1,10 @@
 use crate::db::DbPool;
-use crate::models::user::{
-    self, User, UserSession, ROLE_USER, STATUS_ACTIVE, STATUS_PENDING,
-};
+use crate::models::user::{self, ROLE_USER, STATUS_ACTIVE, STATUS_PENDING, User, UserSession};
 use crate::persistence;
 use anyhow::Result;
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 use chrono::{Duration, Utc};
 use rand::RngCore;
@@ -194,8 +192,8 @@ fn hash_password(password: &str) -> Result<String, AuthError> {
 
 /// Verify a password against its hash
 fn verify_password(password: &str, hash: &str) -> Result<(), AuthError> {
-    let parsed_hash =
-        PasswordHash::new(hash).map_err(|_| AuthError::Internal("Invalid hash format".to_string()))?;
+    let parsed_hash = PasswordHash::new(hash)
+        .map_err(|_| AuthError::Internal("Invalid hash format".to_string()))?;
 
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed_hash)

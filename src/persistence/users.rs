@@ -118,10 +118,7 @@ pub async fn list_users(
 }
 
 /// Count users with optional status filter
-pub async fn count_users(
-    pool: &PgPool,
-    status_filter: Option<&str>,
-) -> Result<i64, sqlx::Error> {
+pub async fn count_users(pool: &PgPool, status_filter: Option<&str>) -> Result<i64, sqlx::Error> {
     let row: (i64,) = if let Some(status) = status_filter {
         sqlx::query_as(
             r"

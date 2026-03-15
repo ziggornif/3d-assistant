@@ -28,9 +28,7 @@ async fn setup_test_db() -> PgPool {
     run_migrations(&pool)
         .await
         .expect("Failed to run migrations");
-    seed_data(&pool)
-        .await
-        .expect("Failed to seed data");
+    seed_data(&pool).await.expect("Failed to seed data");
 
     pool
 }

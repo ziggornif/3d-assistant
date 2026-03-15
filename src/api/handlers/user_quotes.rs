@@ -39,10 +39,7 @@ pub struct QuoteListResponse {
 }
 
 /// Helper: verify user auth from cookie jar
-async fn verify_user(
-    state: &AppState,
-    jar: &CookieJar,
-) -> Result<crate::models::User, AppError> {
+async fn verify_user(state: &AppState, jar: &CookieJar) -> Result<crate::models::User, AppError> {
     let token = jar
         .get("user_session")
         .ok_or_else(|| AppError::Unauthorized("Non authentifie".to_string()))?;
@@ -308,8 +305,14 @@ pub async fn export_quote(
     }
 
     csv.push_str("\n");
-    let subtotal = breakdown.get("subtotal").and_then(|v| v.as_f64()).unwrap_or(0.0);
-    let base_fee = breakdown.get("base_fee").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let subtotal = breakdown
+        .get("subtotal")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let base_fee = breakdown
+        .get("base_fee")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
     csv.push_str(&format!("Sous-total materiaux;;;;;;{:.2}\n", subtotal));
     csv.push_str(&format!("Frais de service;;;;;;{:.2}\n", base_fee));
     csv.push_str(&format!("Total;;;;;;{:.2}\n", quote_row.total_price));
@@ -320,9 +323,15 @@ pub async fn export_quote(
     Ok((
         StatusCode::OK,
         [
-            (header::CONTENT_TYPE, header::HeaderValue::from_static("text/csv; charset=utf-8")),
-            (header::CONTENT_DISPOSITION, header::HeaderValue::from_str(&content_disposition)
-                .map_err(|e| AppError::Internal(format!("Invalid header value: {e}")))?),
+            (
+                header::CONTENT_TYPE,
+                header::HeaderValue::from_static("text/csv; charset=utf-8"),
+            ),
+            (
+                header::CONTENT_DISPOSITION,
+                header::HeaderValue::from_str(&content_disposition)
+                    .map_err(|e| AppError::Internal(format!("Invalid header value: {e}")))?,
+            ),
         ],
         csv,
     ))
@@ -470,8 +479,8 @@ async fn get_quote_detail(
     .fetch_optional(pool)
     .await?;
 
-    let (id, session_id, total_price, status, breakdown_str, created_at) = row
-        .ok_or_else(|| AppError::NotFound("Devis non trouve".to_string()))?;
+    let (id, session_id, total_price, status, breakdown_str, created_at) =
+        row.ok_or_else(|| AppError::NotFound("Devis non trouve".to_string()))?;
 
     let breakdown: serde_json::Value =
         serde_json::from_str(&breakdown_str).unwrap_or(serde_json::json!({}));
@@ -492,20 +501,17 @@ async fn get_quote_detail(
 
     let models = model_rows
         .into_iter()
-        .map(
-            |(id, filename, volume_cm3, material_name, price_per_cm3)| {
-                let vol = volume_cm3.unwrap_or(0.0);
-                let price = price_per_cm3.unwrap_or(0.0) * vol;
-                QuoteDetailModel {
-                    id,
-                    filename,
-                    volume_cm3: vol,
-                    material_name: material_name
-                        .unwrap_or_else(|| "Non defini".to_string()),
-                    price,
-                }
-            },
-        )
+        .map(|(id, filename, volume_cm3, material_name, price_per_cm3)| {
+            let vol = volume_cm3.unwrap_or(0.0);
+            let price = price_per_cm3.unwrap_or(0.0) * vol;
+            QuoteDetailModel {
+                id,
+                filename,
+                volume_cm3: vol,
+                material_name: material_name.unwrap_or_else(|| "Non defini".to_string()),
+                price,
+            }
+        })
         .collect();
 
     Ok(QuoteDetailResponse {

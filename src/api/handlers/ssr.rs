@@ -317,10 +317,7 @@ pub async fn quote_detail_page(
 }
 
 /// Helper: check user authentication from cookie
-async fn check_user_auth(
-    state: &AppState,
-    jar: &CookieJar,
-) -> Option<crate::models::User> {
+async fn check_user_auth(state: &AppState, jar: &CookieJar) -> Option<crate::models::User> {
     let cookie = jar.get("user_session")?;
     let auth_service = AuthService::new(state.pool.clone());
     auth_service.verify_session(cookie.value()).await.ok()

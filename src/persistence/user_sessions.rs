@@ -27,10 +27,7 @@ pub async fn create(
 }
 
 /// Find session by token
-pub async fn find_by_token(
-    pool: &PgPool,
-    token: &str,
-) -> Result<Option<UserSession>, sqlx::Error> {
+pub async fn find_by_token(pool: &PgPool, token: &str) -> Result<Option<UserSession>, sqlx::Error> {
     sqlx::query_as(
         r"
         SELECT token, user_id, created_at, expires_at

@@ -44,7 +44,9 @@ pub async fn create_session(
     let session_service = SessionService::new(state.pool.clone(), &state.config.upload_dir);
 
     let session = if let Some(user) = authenticated_user {
-        session_service.create_authenticated_session(&user.id).await?
+        session_service
+            .create_authenticated_session(&user.id)
+            .await?
     } else {
         session_service.create_session().await?
     };

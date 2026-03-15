@@ -1,8 +1,4 @@
-use axum::{
-    Json,
-    extract::State,
-    http::StatusCode,
-};
+use axum::{Json, extract::State, http::StatusCode};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use serde::{Deserialize, Serialize};
 
@@ -167,10 +163,7 @@ pub struct MeResponse {
 }
 
 /// Get current authenticated user info
-pub async fn me(
-    State(state): State<AppState>,
-    jar: CookieJar,
-) -> AppResult<Json<MeResponse>> {
+pub async fn me(State(state): State<AppState>, jar: CookieJar) -> AppResult<Json<MeResponse>> {
     let token = jar
         .get("user_session")
         .ok_or_else(|| AppError::Unauthorized("Non authentifie".to_string()))?;
